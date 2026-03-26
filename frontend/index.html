@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -1143,7 +1143,22 @@ jobs:
               <div class="tr-form-field"><label>YouTube likes</label><input type="number" id="tr-s-yt-likes" /></div>
             </div>
           </div>
-          <div class="tr-setup-card">
+                    <div class="tr-setup-card">
+            <h3>&#128273; API Keys</h3>
+            <p>Sla je API keys op — bewaard in .env, blijven actief na herstart.</p>
+            <div class="tr-form-field">
+              <label>YouTube API Key</label>
+              <input type="password" id="tr-s-yt-apikey" placeholder="AIza... (laat leeg om niet te wijzigen)" autocomplete="off" style="font-family:monospace" />
+            </div>
+            <div class="tr-form-field">
+              <label>Reddit Client ID</label>
+              <input type="text" id="tr-s-reddit-id" placeholder="Client ID" autocomplete="off" />
+            </div>
+            <div class="tr-form-field">
+              <label>Reddit Client Secret</label>
+              <input type="password" id="tr-s-reddit-secret" placeholder="Client Secret" autocomplete="off" />
+            </div>
+          </div><div class="tr-setup-card">
             <h3>⏰ Polling interval</h3>
             <p>Hoe vaak automatisch Reddit & YouTube controleren.</p>
             <div class="tr-form-field">
@@ -2112,13 +2127,75 @@ async function memSearch(q) {
 // ── Trend Tracker ─────────────────────────────────────────────────────────────
 let trendCurrentTopic = null;
 
+async function trSaveSettings() {
+  const btn = document.querySelector('#page-trends .btn-primary');
+  if (btn) { btn.disabled = true; btn.textContent = 'Opslaan...'; }
+  try {
+    const body = {
+      reddit:  {
+        enabled:  true,
+        upvotes:  parseInt(document.getElementById('tr-s-r-upvotes')?.value  || 50),
+        comments: parseInt(document.getElementById('tr-s-r-comments')?.value || 20),
+      },
+      youtube: {
+        enabled: true,
+        views:   parseInt(document.getElementById('tr-s-yt-views')?.value  || 1000),
+        likes:   parseInt(document.getElementById('tr-s-yt-likes')?.value  || 50),
+      },
+      pollIntervalMinutes: parseInt(document.getElementById('tr-s-interval')?.value || 30),
+    };
+    // API keys — alleen meesturen als ingevuld
+    const ytKey      = document.getElementById('tr-s-yt-apikey')?.value?.trim();
+    const redditId   = document.getElementById('tr-s-reddit-id')?.value?.trim();
+    const redditSec  = document.getElementById('tr-s-reddit-secret')?.value?.trim();
+    if (ytKey)     body.youtubeApiKey      = ytKey;
+    if (redditId)  body.redditClientId     = redditId;
+    if (redditSec) body.redditClientSecret = redditSec;
+
+    await fetch(`${API}/trends/settings`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    // Wis key velden na opslaan (staan nu in .env)
+    if (ytKey)    { document.getElementById('tr-s-yt-apikey').value = ''; }
+    if (redditId) { document.getElementById('tr-s-reddit-id').value = ''; }
+    if (redditSec){ document.getElementById('tr-s-reddit-secret').value = ''; }
+    toast('Instellingen opgeslagen!');
+    trendLoad();
+  } catch(e) {
+    toast('Fout bij opslaan', 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Instellingen opslaan'; }
+  }
+}
+
 async function trendLoad() {
   try {
-    const [status, results, topics] = await Promise.all([
+    const [status, results, topics, settings] = await Promise.all([
       fetch(`${API}/trends/status`).then(r => r.json()).catch(() => ({})),
       fetch(`${API}/trends/results`).then(r => r.json()).catch(() => ({topics:{}})),
-      fetch(`${API}/trends/topics`).then(r => r.json()).catch(() => [])
+      fetch(`${API}/trends/topics`).then(r => r.json()).catch(() => []),
+      fetch(`${API}/trends/settings`).then(r => r.json()).catch(() => ({})),
     ]);
+    // Vul settings form in
+    if (settings.reddit) {
+      const rv = document.getElementById('tr-s-r-upvotes');  if (rv) rv.value = settings.reddit.upvotes  || 50;
+      const rc = document.getElementById('tr-s-r-comments'); if (rc) rc.value = settings.reddit.comments || 20;
+    }
+    if (settings.youtube) {
+      const yv = document.getElementById('tr-s-yt-views'); if (yv) yv.value = settings.youtube.views || 1000;
+      const yl = document.getElementById('tr-s-yt-likes'); if (yl) yl.value = settings.youtube.likes || 50;
+    }
+    if (settings.pollIntervalMinutes) {
+      const si = document.getElementById('tr-s-interval');
+      if (si) si.value = settings.pollIntervalMinutes;
+    }
+    // Toon placeholder als key al geconfigureerd is
+    const ytKeyInput = document.getElementById('tr-s-yt-apikey');
+    if (ytKeyInput && settings.hasYoutubeKey) ytKeyInput.placeholder = '✅ Geconfigureerd (laat leeg om te behouden)';
+    const rdInput = document.getElementById('tr-s-reddit-id');
+    if (rdInput && settings.hasRedditAuth) rdInput.placeholder = '✅ Geconfigureerd';
     const statusEl = document.getElementById('trend-status');
     if (statusEl) statusEl.textContent = status.lastPoll ? `Laatste poll: ${new Date(status.lastPoll).toLocaleString('nl-BE')}` : 'Nog niet gepolled';
     const unseenEl = document.getElementById('trend-unseen-count');

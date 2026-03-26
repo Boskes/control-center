@@ -231,14 +231,52 @@ router.delete('/alerts/:id', (req, res) => {
   res.json({ ok: true });
 });
 
-// GET /api/trends/settings
+// Helper: lees/schrijf .env bestand
+function readEnv() {
+  const vars = {};
+  if (fs.existsSync(envPath)) {
+    fs.readFileSync(envPath, 'utf8').split('\n').forEach(line => {
+      const [key, ...val] = line.split('=');
+      if (key?.trim() && !key.startsWith('#')) vars[key.trim()] = val.join('=').trim();
+    });
+  }
+  return vars;
+}
+
+function writeEnv(vars) {
+  const content = Object.entries(vars)
+    .map(([k, v]) => `${k}=${v}`)
+    .join('\n');
+  fs.writeFileSync(envPath, content + '\n');
+}
+
+// GET /api/trends/settings — inclusief API keys (gemaskeerd)
 router.get('/settings', (_req, res) => {
-  res.json(readJSON('settings.json', {}));
+  const settings = readJSON('settings.json', {});
+  const env = readEnv();
+  res.json({
+    ...settings,
+    youtubeApiKey:      env.YOUTUBE_API_KEY     ? '***' + env.YOUTUBE_API_KEY.slice(-4) : '',
+    redditClientId:     env.REDDIT_CLIENT_ID    || '',
+    hasYoutubeKey:      !!env.YOUTUBE_API_KEY,
+    hasRedditAuth:      !!(env.REDDIT_CLIENT_ID && env.REDDIT_CLIENT_SECRET),
+  });
 });
 
-// PUT /api/trends/settings
+// PUT /api/trends/settings — sla ook API keys op in .env
 router.put('/settings', (req, res) => {
-  writeJSON('settings.json', req.body);
+  const { youtubeApiKey, redditClientId, redditClientSecret, ...rest } = req.body;
+  writeJSON('settings.json', rest);
+
+  // Update .env als keys meegegeven zijn
+  if (youtubeApiKey || redditClientId || redditClientSecret) {
+    const env = readEnv();
+    if (youtubeApiKey  && !youtubeApiKey.startsWith('***'))  { env.YOUTUBE_API_KEY = youtubeApiKey; process.env.YOUTUBE_API_KEY = youtubeApiKey; }
+    if (redditClientId)     { env.REDDIT_CLIENT_ID = redditClientId; process.env.REDDIT_CLIENT_ID = redditClientId; }
+    if (redditClientSecret) { env.REDDIT_CLIENT_SECRET = redditClientSecret; process.env.REDDIT_CLIENT_SECRET = redditClientSecret; }
+    writeEnv(env);
+  }
+
   res.json({ ok: true });
 });
 
