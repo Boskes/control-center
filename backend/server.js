@@ -4,7 +4,7 @@
  * Modular, plugin-based architecture.
  * Each module (route) lives in /modules/ and is auto-loaded.
  *
- * Port: 3002
+ * Port: 3000
  */
 
 import express from 'express';
@@ -22,10 +22,10 @@ const PORT = 3000;
 // ── Middleware ────────────────────────────────────────────────────────────────
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, '../frontend')));
 
 // ── Data helpers ──────────────────────────────────────────────────────────────
-const DATA_DIR = path.join(__dirname, 'data');
+const DATA_DIR = path.join(__dirname, '../data');
 
 export function readData(file) {
   try {
@@ -223,7 +223,7 @@ app.get('/api/openclaw/agents', (_req, res) => {
 
 // ── Catch-all → SPA ──────────────────────────────────────────────────────────
 app.get('*', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, '../frontend', 'index.html'));
 });
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
