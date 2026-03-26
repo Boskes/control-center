@@ -1171,6 +1171,7 @@ jobs:
             <div class="tr-form-field">
               <label>Interval (minuten)</label>
               <select id="tr-s-interval">
+                <option value="0">Enkel manueel</option>
                 <option value="15">Elke 15 minuten</option>
                 <option value="30">Elke 30 minuten</option>
                 <option value="60">Elk uur</option>
@@ -2149,7 +2150,7 @@ async function trLoadSetup() {
     if (el('tr-s-r-comments')) el('tr-s-r-comments').value = s.reddit?.comments || 20;
     if (el('tr-s-yt-views'))   el('tr-s-yt-views').value   = s.youtube?.views   || 1000;
     if (el('tr-s-yt-likes'))   el('tr-s-yt-likes').value   = s.youtube?.likes   || 50;
-    if (el('tr-s-interval'))   el('tr-s-interval').value   = s.pollIntervalMinutes || 30;
+    if (el('tr-s-interval'))   el('tr-s-interval').value   = s.pollIntervalMinutes ?? 0;
     const ytInput = el('tr-s-yt-apikey');
     if (ytInput) ytInput.placeholder = s.hasYoutubeKey ? '✅ Geconfigureerd (laat leeg om te behouden)' : 'AIzaSy...';
     const rdInput = el('tr-s-reddit-id');
@@ -2203,7 +2204,7 @@ async function trSaveSettings() {
         views:   parseInt(document.getElementById('tr-s-yt-views')?.value  || 1000),
         likes:   parseInt(document.getElementById('tr-s-yt-likes')?.value  || 50),
       },
-      pollIntervalMinutes: parseInt(document.getElementById('tr-s-interval')?.value || 30),
+      pollIntervalMinutes: parseInt(document.getElementById('tr-s-interval')?.value ?? 0),
     };
     // API keys — alleen meesturen als ingevuld
     const ytKey      = document.getElementById('tr-s-yt-apikey')?.value?.trim();
@@ -2248,7 +2249,7 @@ async function trendLoad() {
       const yv = document.getElementById('tr-s-yt-views'); if (yv) yv.value = settings.youtube.views || 1000;
       const yl = document.getElementById('tr-s-yt-likes'); if (yl) yl.value = settings.youtube.likes || 50;
     }
-    if (settings.pollIntervalMinutes) {
+    if (settings.pollIntervalMinutes !== undefined) {
       const si = document.getElementById('tr-s-interval');
       if (si) si.value = settings.pollIntervalMinutes;
     }
