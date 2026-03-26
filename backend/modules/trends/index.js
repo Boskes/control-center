@@ -184,8 +184,8 @@ function startScheduler() {
 
 // ── Init ──────────────────────────────────────────────────────────
 initData();
-startScheduler();
-setTimeout(() => pollAll(), 5000);
+// startScheduler(); // Uitgeschakeld — polling enkel manueel via /api/trends/poll
+// setTimeout(() => pollAll(), 5000); // Uitgeschakeld — geen auto-poll bij startup
 
 // ── API Routes ────────────────────────────────────────────────────
 
