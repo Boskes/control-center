@@ -623,6 +623,20 @@
     <button class="nav-btn" data-page="github" onclick="nav('github')">
       <span class="icon">🐙</span> GitHub Setup
     </button>
+
+    <span class="nav-section">Tools</span>
+    <button class="nav-btn" data-page="activity" onclick="nav('activity')">
+      <span class="icon">📊</span> Activity
+    </button>
+    <button class="nav-btn" data-page="memory" onclick="nav('memory')">
+      <span class="icon">🧠</span> Daily Memory
+    </button>
+    <button class="nav-btn" data-page="trends" onclick="nav('trends')">
+      <span class="icon">📈</span> Trend Tracker
+    </button>
+    <button class="nav-btn" data-page="rdteam" onclick="nav('rdteam')">
+      <span class="icon">🔬</span> R&amp;D Team
+    </button>
   </nav>
 
   <!-- Main -->
@@ -861,6 +875,372 @@ jobs:
           node-version: '20'
       - run: npm ci
       - run: npm test</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ ACTIVITY ═══════════════ -->
+    <div class="page" id="page-activity">
+      <style>
+        #page-activity .act-aside { width:220px; flex-shrink:0; background:var(--surface); border-right:1px solid var(--border); padding:16px 12px; overflow-y:auto; }
+        #page-activity .act-layout { display:flex; height:calc(100vh - 120px); overflow:hidden; }
+        #page-activity .act-main { flex:1; overflow-y:auto; padding:20px 24px; }
+        #page-activity .act-stats { display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap; }
+        #page-activity .act-stat-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 18px; min-width:110px; text-align:center; }
+        #page-activity .act-stat-card .num { font-size:1.6rem; font-weight:700; color:var(--accent); }
+        #page-activity .act-stat-card .lbl { font-size:.72rem; color:var(--muted); margin-top:2px; }
+        #page-activity .act-search-row { display:flex; gap:10px; margin-bottom:16px; }
+        #page-activity .act-search-input { flex:1; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:8px 12px; color:var(--text); font-size:.87rem; outline:none; }
+        #page-activity .act-search-input:focus { border-color:var(--accent); }
+        #page-activity .act-entries { display:flex; flex-direction:column; gap:10px; }
+        #page-activity .act-entry-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; transition:border-color .15s; }
+        #page-activity .act-entry-card:hover { border-color:var(--accent); }
+        #page-activity .act-entry-header { display:flex; align-items:flex-start; gap:10px; padding:12px 16px; cursor:pointer; }
+        #page-activity .act-type-dot { width:9px; height:9px; border-radius:50%; margin-top:4px; flex-shrink:0; }
+        #page-activity .act-entry-meta { flex:1; min-width:0; }
+        #page-activity .act-request { font-size:.9rem; font-weight:600; margin-bottom:3px; }
+        #page-activity .act-summary { font-size:.8rem; color:var(--muted); }
+        #page-activity .act-entry-right { display:flex; flex-direction:column; align-items:flex-end; gap:3px; flex-shrink:0; }
+        #page-activity .act-type-badge { font-size:.68rem; padding:2px 8px; border-radius:10px; font-weight:600; text-transform:uppercase; }
+        #page-activity .act-ts { font-size:.7rem; color:var(--muted); }
+        #page-activity .act-proj-tag { font-size:.68rem; background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:1px 6px; color:var(--muted); }
+        #page-activity .act-detail { display:none; border-top:1px solid var(--border); padding:12px 16px 14px 36px; background:var(--surface2); }
+        #page-activity .act-detail.open { display:block; }
+        #page-activity .act-detail h4 { font-size:.7rem; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:6px; }
+        #page-activity .act-detail ul { list-style:none; display:flex; flex-direction:column; gap:4px; }
+        #page-activity .act-detail ul li { font-size:.82rem; padding-left:12px; position:relative; }
+        #page-activity .act-detail ul li::before { content:'›'; position:absolute; left:0; color:var(--accent2); }
+        #page-activity .act-file-chip { display:inline-block; background:var(--bg); border:1px solid var(--border); border-radius:5px; font-size:.72rem; padding:1px 7px; color:var(--muted); margin:2px; font-family:monospace; }
+        #page-activity .act-proj-btn { display:block; width:100%; text-align:left; background:none; border:none; padding:8px 10px; border-radius:7px; color:var(--text); cursor:pointer; font-size:.84rem; margin-bottom:3px; transition:background .12s; }
+        #page-activity .act-proj-btn:hover { background:var(--surface2); }
+        #page-activity .act-proj-btn.active { background:var(--accent); color:#fff; }
+        #page-activity .act-badge { float:right; background:var(--surface2); border-radius:20px; font-size:.7rem; padding:1px 6px; color:var(--muted); }
+        #page-activity .act-proj-btn.active .act-badge { background:rgba(255,255,255,.15); color:#fff; }
+        #page-activity aside h2 { font-size:.72rem; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); margin-bottom:10px; }
+      </style>
+      <div class="page-header">
+        <div><h2>📊 Activity Dashboard</h2><p>Overzicht van alle werk activiteiten</p></div>
+        <button class="btn btn-secondary" onclick="actLoad()">↻ Vernieuwen</button>
+      </div>
+      <div class="act-layout">
+        <aside class="act-aside">
+          <h2>Projecten</h2>
+          <div id="act-project-list"></div>
+        </aside>
+        <div class="act-main">
+          <div class="act-stats" id="act-stats-bar"></div>
+          <div class="act-search-row">
+            <input class="act-search-input" id="act-search" type="text" placeholder="Zoek in verzoeken, acties, bestanden…" oninput="actRenderEntries()" />
+          </div>
+          <div class="act-entries" id="act-entries-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ MEMORY ═══════════════ -->
+    <div class="page" id="page-memory">
+      <style>
+        #page-memory .mem-layout { display:flex; height:calc(100vh - 120px); overflow:hidden; }
+        #page-memory .mem-sidebar { width:240px; flex-shrink:0; background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; overflow:hidden; }
+        #page-memory .mem-search { padding:12px 12px 8px; }
+        #page-memory .mem-search-input { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:8px 10px; color:var(--text); font-size:.83rem; outline:none; }
+        #page-memory .mem-search-input:focus { border-color:var(--accent); }
+        #page-memory .mem-tabs { display:flex; padding:0 12px 8px; gap:6px; }
+        #page-memory .mem-tab-btn { flex:1; padding:5px; border-radius:6px; border:none; cursor:pointer; font-size:.73rem; font-weight:600; background:var(--surface2); color:var(--muted); transition:all .12s; }
+        #page-memory .mem-tab-btn.active { background:var(--accent); color:#fff; }
+        #page-memory .mem-day-list { overflow-y:auto; flex:1; padding:0 6px 10px; }
+        #page-memory .mem-day-item { padding:9px 10px; border-radius:8px; cursor:pointer; margin-bottom:2px; transition:all .12s; border:1px solid transparent; }
+        #page-memory .mem-day-item:hover { background:var(--surface2); }
+        #page-memory .mem-day-item.active { background:var(--surface2); border-color:var(--accent); }
+        #page-memory .mem-day-date { font-size:.82rem; font-weight:600; display:flex; align-items:center; justify-content:space-between; }
+        #page-memory .mem-day-count { font-size:.68rem; background:var(--surface3); border-radius:20px; padding:1px 7px; color:var(--muted); }
+        #page-memory .mem-day-item.active .mem-day-count { background:var(--accent); color:#fff; }
+        #page-memory .mem-day-projects { font-size:.7rem; color:var(--muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        #page-memory .mem-main { flex:1; overflow-y:auto; padding:20px 24px; }
+        #page-memory .mem-entry-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:12px; transition:border-color .15s; }
+        #page-memory .mem-entry-card:hover { border-color:var(--accent); }
+        #page-memory .mem-entry-top { padding:14px 16px; display:flex; gap:12px; align-items:flex-start; }
+        #page-memory .mem-entry-time { font-size:.7rem; color:var(--muted); white-space:nowrap; margin-top:2px; flex-shrink:0; }
+        #page-memory .mem-entry-body { flex:1; min-width:0; }
+        #page-memory .mem-entry-title { font-size:.95rem; font-weight:600; margin-bottom:4px; }
+        #page-memory .mem-entry-summary { font-size:.82rem; color:var(--muted); line-height:1.5; }
+        #page-memory .mem-entry-footer { display:flex; align-items:center; gap:7px; margin-top:8px; flex-wrap:wrap; }
+        #page-memory .mem-proj-badge { font-size:.68rem; padding:2px 8px; border-radius:20px; background:rgba(124,111,255,.2); color:#a99fff; font-weight:600; }
+        #page-memory .mem-tag-chip { font-size:.66rem; background:var(--surface2); border:1px solid var(--border); border-radius:5px; padding:2px 6px; color:var(--muted); }
+        #page-memory .mem-expand-btn { background:none; border:none; cursor:pointer; color:var(--muted); font-size:.75rem; padding:2px 5px; border-radius:4px; }
+        #page-memory .mem-expand-btn:hover { background:var(--surface2); color:var(--text); }
+        #page-memory .mem-entry-details { border-top:1px solid var(--border); background:var(--surface2); padding:10px 16px 12px 44px; display:none; }
+        #page-memory .mem-entry-details.open { display:block; }
+        #page-memory .mem-entry-details h4 { font-size:.7rem; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:6px; }
+        #page-memory .mem-entry-details ul { list-style:none; display:flex; flex-direction:column; gap:4px; }
+        #page-memory .mem-entry-details ul li { font-size:.82rem; padding-left:12px; position:relative; }
+        #page-memory .mem-entry-details ul li::before { content:'›'; position:absolute; left:0; color:var(--accent2); }
+        #page-memory .mem-modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.75); display:none; align-items:center; justify-content:center; z-index:300; padding:20px; }
+        #page-memory .mem-modal-overlay.open { display:flex; }
+        #page-memory .mem-modal { background:var(--surface); border:1px solid var(--border); border-radius:14px; width:100%; max-width:540px; padding:24px; max-height:90vh; overflow-y:auto; }
+        #page-memory .mem-form-field { margin-bottom:12px; }
+        #page-memory .mem-form-field label { display:block; font-size:.72rem; color:var(--muted); margin-bottom:4px; font-weight:600; text-transform:uppercase; }
+        #page-memory .mem-form-field input, #page-memory .mem-form-field textarea { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:7px; padding:9px 11px; color:var(--text); font-size:.85rem; outline:none; font-family:inherit; }
+        #page-memory .mem-form-field input:focus, #page-memory .mem-form-field textarea:focus { border-color:var(--accent); }
+        #page-memory .mem-form-field textarea { min-height:80px; resize:vertical; }
+        #page-memory .mem-form-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+        #page-memory .mem-form-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:16px; padding-top:14px; border-top:1px solid var(--border); }
+        #page-memory .mem-empty { text-align:center; padding:40px 20px; color:var(--muted); }
+      </style>
+      <div class="page-header">
+        <div><h2>🧠 Daily Memory</h2><p>Dagelijkse logs van gesprekken en werk</p></div>
+        <button class="btn btn-primary" onclick="memOpenAddModal()">+ Log Entry</button>
+      </div>
+      <div class="mem-layout">
+        <div class="mem-sidebar">
+          <div class="mem-search">
+            <input class="mem-search-input" type="text" id="mem-search-input" placeholder="🔍 Zoek door alle logs…" oninput="memHandleSearch()" />
+          </div>
+          <div class="mem-tabs">
+            <button class="mem-tab-btn active" id="mem-tab-days" onclick="memSwitchTab('days')">Days</button>
+            <button class="mem-tab-btn" id="mem-tab-projects" onclick="memSwitchTab('projects')">Projects</button>
+          </div>
+          <div class="mem-day-list" id="mem-day-list"></div>
+        </div>
+        <div class="mem-main" id="mem-main-area">
+          <div class="mem-empty"><div style="font-size:3rem">🧠</div><p>Selecteer een dag of zoek door alle logs.</p><button class="btn btn-primary" onclick="memOpenAddModal()">+ Log eerste entry</button></div>
+        </div>
+      </div>
+      <!-- Add Modal -->
+      <div class="mem-modal-overlay" id="mem-add-modal">
+        <div class="mem-modal">
+          <div style="font-size:1rem;font-weight:700;margin-bottom:16px">🧠 Log New Entry</div>
+          <div class="mem-form-row">
+            <div class="mem-form-field"><label>Datum</label><input type="date" id="mem-ef-date" /></div>
+            <div class="mem-form-field"><label>Project</label><input type="text" id="mem-ef-project" placeholder="control-center…" /></div>
+          </div>
+          <div class="mem-form-field"><label>Titel *</label><input type="text" id="mem-ef-title" placeholder="Wat werd besproken of gebouwd?" /></div>
+          <div class="mem-form-field"><label>Samenvatting *</label><textarea id="mem-ef-summary" placeholder="Beschrijf wat er is gebeurd…"></textarea></div>
+          <div class="mem-form-field"><label>Details (één per regel)</label><textarea id="mem-ef-details" placeholder="- Server gebouwd&#10;- Bug gefixed"></textarea></div>
+          <div class="mem-form-field"><label>Tags (komma gescheiden)</label><input type="text" id="mem-ef-tags" placeholder="architecture, github" /></div>
+          <div class="mem-form-actions">
+            <button class="btn btn-secondary" onclick="memCloseAddModal()">Annuleren</button>
+            <button class="btn btn-primary" onclick="memSaveEntry()">Opslaan</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ TRENDS ═══════════════ -->
+    <div class="page" id="page-trends">
+      <style>
+        #page-trends .tr-status-bar { display:flex; align-items:center; gap:16px; background:var(--surface); border:1px solid var(--border); border-radius:9px; padding:10px 16px; margin-bottom:18px; flex-wrap:wrap; }
+        #page-trends .tr-status-item { display:flex; align-items:center; gap:6px; font-size:.8rem; color:var(--muted); }
+        #page-trends .tr-sdot { width:7px; height:7px; border-radius:50%; }
+        #page-trends .dot-green { background:var(--accent2); box-shadow:0 0 5px var(--accent2); }
+        #page-trends .dot-yellow { background:var(--warn); }
+        #page-trends .dot-grey { background:var(--muted); }
+        #page-trends .tr-metrics { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:12px; margin-bottom:20px; }
+        #page-trends .tr-metric-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px; border-top:3px solid var(--accent); }
+        #page-trends .tr-metric-card.green { border-top-color:var(--accent2); }
+        #page-trends .tr-metric-card.red { border-top-color:var(--danger); }
+        #page-trends .tr-metric-num { font-size:1.6rem; font-weight:700; color:var(--accent); }
+        #page-trends .tr-metric-card.green .tr-metric-num { color:var(--accent2); }
+        #page-trends .tr-metric-card.red .tr-metric-num { color:var(--danger); }
+        #page-trends .tr-metric-lbl { font-size:.7rem; color:var(--muted); margin-top:2px; }
+        #page-trends .tr-topic-tabs { display:flex; gap:7px; margin-bottom:18px; flex-wrap:wrap; }
+        #page-trends .tr-topic-tab { padding:6px 14px; border-radius:7px; border:1px solid var(--border); cursor:pointer; font-size:.8rem; font-weight:600; color:var(--muted); background:var(--surface); transition:all .12s; }
+        #page-trends .tr-topic-tab:hover { border-color:var(--accent); color:var(--text); }
+        #page-trends .tr-topic-tab.active { color:#fff; border-color:transparent; }
+        #page-trends .tr-feed-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+        #page-trends .tr-feed-section h3 { font-size:.77rem; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:10px; display:flex; align-items:center; gap:7px; }
+        #page-trends .tr-content-list { display:flex; flex-direction:column; gap:8px; }
+        #page-trends .tr-content-card { background:var(--surface); border:1px solid var(--border); border-radius:9px; padding:12px 14px; transition:border-color .15s; }
+        #page-trends .tr-content-card:hover { border-color:var(--accent); }
+        #page-trends .tr-cc-title { font-size:.85rem; font-weight:600; margin-bottom:3px; }
+        #page-trends .tr-cc-title a { color:var(--text); text-decoration:none; }
+        #page-trends .tr-cc-title a:hover { color:var(--accent); }
+        #page-trends .tr-cc-meta { font-size:.7rem; color:var(--muted); display:flex; gap:8px; flex-wrap:wrap; margin-bottom:5px; }
+        #page-trends .tr-cc-thumb { width:60px; height:38px; border-radius:5px; object-fit:cover; flex-shrink:0; background:var(--surface2); }
+        #page-trends .tr-cc-top { display:flex; gap:9px; align-items:flex-start; }
+        #page-trends .tr-cc-body { flex:1; min-width:0; }
+        #page-trends .tr-hot-badge { background:rgba(255,85,114,.15); color:var(--danger); border-radius:20px; font-size:.62rem; padding:1px 7px; font-weight:600; }
+        #page-trends .tr-new-badge { background:rgba(0,212,170,.15); color:var(--accent2); border-radius:20px; font-size:.62rem; padding:1px 7px; font-weight:600; }
+        #page-trends .tr-sub-badge { background:var(--surface2); border:1px solid var(--border); border-radius:20px; font-size:.62rem; padding:1px 7px; color:var(--muted); }
+        #page-trends .tr-alerts-list { display:flex; flex-direction:column; gap:8px; }
+        #page-trends .tr-alert-card { background:var(--surface); border:1px solid var(--border); border-radius:9px; padding:12px 16px; display:flex; align-items:flex-start; gap:12px; }
+        #page-trends .tr-alert-card.unseen { border-left:3px solid var(--danger); }
+        #page-trends .tr-alert-body { flex:1; min-width:0; }
+        #page-trends .tr-alert-title { font-size:.88rem; font-weight:600; margin-bottom:3px; }
+        #page-trends .tr-alert-title a { color:var(--text); text-decoration:none; }
+        #page-trends .tr-alert-title a:hover { color:var(--accent); }
+        #page-trends .tr-alert-meta { font-size:.73rem; color:var(--muted); display:flex; gap:8px; flex-wrap:wrap; }
+        #page-trends .tr-alert-metric { color:var(--danger); font-weight:600; }
+        #page-trends .tr-sub-nav { display:flex; gap:6px; margin-bottom:18px; }
+        #page-trends .tr-sub-nav-btn { padding:7px 14px; border-radius:7px; border:none; background:var(--surface); color:var(--muted); cursor:pointer; font-size:.83rem; font-weight:600; border:1px solid var(--border); transition:all .12s; }
+        #page-trends .tr-sub-nav-btn:hover { border-color:var(--accent); color:var(--text); }
+        #page-trends .tr-sub-nav-btn.active { background:var(--accent); color:#fff; border-color:transparent; }
+        #page-trends .tr-unseen-badge { background:var(--danger); color:#fff; border-radius:20px; font-size:.7rem; font-weight:700; padding:2px 7px; margin-left:6px; display:none; }
+        #page-trends .tr-page { display:none; }
+        #page-trends .tr-page.active { display:block; }
+        #page-trends .tr-form-field { margin-bottom:11px; }
+        #page-trends .tr-form-field label { display:block; font-size:.7rem; color:var(--muted); margin-bottom:4px; font-weight:600; text-transform:uppercase; }
+        #page-trends .tr-form-field input, #page-trends .tr-form-field select { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:7px; padding:8px 11px; color:var(--text); font-size:.83rem; outline:none; }
+        #page-trends .tr-form-field input:focus, #page-trends .tr-form-field select:focus { border-color:var(--accent); }
+        #page-trends .tr-form-row { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+        #page-trends .tr-setup-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+        #page-trends .tr-setup-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:18px; }
+        #page-trends .tr-setup-card h3 { font-size:.9rem; font-weight:700; margin-bottom:8px; }
+        #page-trends .tr-setup-card p { font-size:.8rem; color:var(--muted); line-height:1.5; margin-bottom:8px; }
+        #page-trends .tr-code-block { background:var(--bg); border:1px solid var(--border); border-radius:7px; padding:10px 12px; font-family:monospace; font-size:.75rem; color:var(--accent2); overflow-x:auto; white-space:pre; }
+        #page-trends .tr-empty { text-align:center; padding:30px 16px; color:var(--muted); }
+        #page-trends .tr-spinner { display:inline-block; width:20px; height:20px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; }
+      </style>
+      <div class="page-header">
+        <div><h2>📈 Trend Tracker</h2><p>Reddit & YouTube trending content voor AI-onderwerpen</p></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span id="tr-unseen-badge" class="tr-unseen-badge"></span>
+          <button class="btn btn-primary" id="tr-poll-btn" onclick="trTriggerPoll()">🔄 Poll Now</button>
+        </div>
+      </div>
+      <div class="tr-sub-nav">
+        <button class="tr-sub-nav-btn active" data-trpage="feed" onclick="trNav('feed')">📊 Live Feed</button>
+        <button class="tr-sub-nav-btn" data-trpage="alerts" onclick="trNav('alerts')">🚨 Alerts <span id="tr-nav-alert-badge"></span></button>
+        <button class="tr-sub-nav-btn" data-trpage="setup" onclick="trNav('setup')">⚙️ Setup</button>
+      </div>
+      <!-- Feed page -->
+      <div class="tr-page active" id="tr-page-feed">
+        <div class="tr-status-bar">
+          <div class="tr-status-item"><div class="tr-sdot dot-grey" id="tr-reddit-dot"></div><span id="tr-reddit-status">Reddit</span></div>
+          <div class="tr-status-item"><div class="tr-sdot dot-grey" id="tr-yt-dot"></div><span id="tr-yt-status">YouTube</span></div>
+          <div class="tr-status-item"><div class="tr-sdot dot-grey" id="tr-poll-dot"></div><span id="tr-poll-status-text">Idle</span></div>
+          <span style="margin-left:auto;font-size:.75rem;color:var(--muted)" id="tr-last-updated"></span>
+        </div>
+        <div class="tr-metrics" id="tr-metrics-row"></div>
+        <div class="tr-topic-tabs" id="tr-topic-tabs"></div>
+        <div id="tr-feed-content"><div class="tr-empty"><div class="tr-spinner"></div><br>Laden…</div></div>
+      </div>
+      <!-- Alerts page -->
+      <div class="tr-page" id="tr-page-alerts">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <strong>🚨 Alerts</strong>
+          <button class="btn btn-secondary btn-sm" onclick="trMarkAllSeen()">✓ Alles gelezen</button>
+        </div>
+        <div id="tr-alerts-content"></div>
+      </div>
+      <!-- Setup page -->
+      <div class="tr-page" id="tr-page-setup">
+        <div class="tr-setup-grid">
+          <div class="tr-setup-card">
+            <h3>🚨 Alert Drempelwaarden</h3>
+            <p>Alert mij wanneer een post/video bereikt:</p>
+            <div class="tr-form-row">
+              <div class="tr-form-field"><label>Reddit upvotes</label><input type="number" id="tr-s-r-upvotes" /></div>
+              <div class="tr-form-field"><label>Reddit comments</label><input type="number" id="tr-s-r-comments" /></div>
+            </div>
+            <div class="tr-form-row">
+              <div class="tr-form-field"><label>YouTube views</label><input type="number" id="tr-s-yt-views" /></div>
+              <div class="tr-form-field"><label>YouTube likes</label><input type="number" id="tr-s-yt-likes" /></div>
+            </div>
+          </div>
+          <div class="tr-setup-card">
+            <h3>⏰ Polling interval</h3>
+            <p>Hoe vaak automatisch Reddit & YouTube controleren.</p>
+            <div class="tr-form-field">
+              <label>Interval (minuten)</label>
+              <select id="tr-s-interval">
+                <option value="15">Elke 15 minuten</option>
+                <option value="30">Elke 30 minuten</option>
+                <option value="60">Elk uur</option>
+                <option value="120">Elke 2 uur</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="trSaveSettings()">💾 Instellingen opslaan</button>
+      </div>
+    </div>
+
+    <!-- ═══════════════ R&D TEAM ═══════════════ -->
+    <div class="page" id="page-rdteam">
+      <style>
+        :root { --nova:#7c6fff; --rex:#00d4aa; --sage:#f59e0b; --vex:#ff5572; --atlas:#38bdf8; }
+        #page-rdteam .rd-layout { display:flex; height:calc(100vh - 120px); overflow:hidden; }
+        #page-rdteam .rd-sidebar { width:240px; flex-shrink:0; background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; overflow:hidden; }
+        #page-rdteam .rd-sidebar-header { padding:12px 14px 6px; display:flex; align-items:center; justify-content:space-between; }
+        #page-rdteam .rd-sidebar-header h3 { font-size:.72rem; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); font-weight:600; }
+        #page-rdteam .rd-session-list { overflow-y:auto; flex:1; padding:0 6px 10px; }
+        #page-rdteam .rd-session-item { padding:9px 10px; border-radius:8px; cursor:pointer; margin-bottom:3px; transition:all .12s; border:1px solid transparent; }
+        #page-rdteam .rd-session-item:hover { background:var(--surface2); }
+        #page-rdteam .rd-session-item.actief { background:var(--surface2); border-color:var(--accent); }
+        #page-rdteam .rd-si-focus { font-size:.82rem; font-weight:600; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        #page-rdteam .rd-si-meta { font-size:.7rem; color:var(--muted); display:flex; gap:7px; align-items:center; }
+        #page-rdteam .rd-sdot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+        #page-rdteam .dot-running { background:var(--warn); animation:rdpulse 1s infinite; }
+        #page-rdteam .dot-complete { background:var(--accent2); }
+        #page-rdteam .dot-error { background:var(--danger); }
+        @keyframes rdpulse { 0%,100%{opacity:1}50%{opacity:.4} }
+        #page-rdteam .rd-main { flex:1; overflow-y:auto; display:flex; flex-direction:column; }
+        #page-rdteam .rd-start-view { display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1; padding:32px 20px; text-align:center; max-width:620px; margin:0 auto; width:100%; }
+        #page-rdteam .rd-start-view h2 { font-size:1.4rem; font-weight:800; margin-bottom:6px; }
+        #page-rdteam .rd-start-view p { font-size:.87rem; color:var(--muted); line-height:1.6; margin-bottom:24px; max-width:480px; }
+        #page-rdteam .rd-agents-row { display:flex; gap:8px; margin-bottom:24px; flex-wrap:wrap; justify-content:center; }
+        #page-rdteam .rd-agent-chip { background:var(--surface); border:1px solid var(--border); border-radius:9px; padding:8px 12px; display:flex; align-items:center; gap:7px; font-size:.8rem; }
+        #page-rdteam .rd-agent-chip .aname { font-weight:600; }
+        #page-rdteam .rd-agent-chip .arole { font-size:.68rem; color:var(--muted); }
+        #page-rdteam .rd-start-form { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:20px; width:100%; text-align:left; }
+        #page-rdteam .rd-form-field { margin-bottom:12px; }
+        #page-rdteam .rd-form-field label { display:block; font-size:.72rem; color:var(--muted); margin-bottom:4px; font-weight:600; text-transform:uppercase; }
+        #page-rdteam .rd-form-field input, #page-rdteam .rd-form-field textarea, #page-rdteam .rd-form-field select { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:7px; padding:9px 11px; color:var(--text); font-size:.85rem; outline:none; font-family:inherit; }
+        #page-rdteam .rd-form-field input:focus, #page-rdteam .rd-form-field textarea:focus, #page-rdteam .rd-form-field select:focus { border-color:var(--accent); }
+        #page-rdteam .rd-form-field textarea { min-height:70px; resize:vertical; }
+        #page-rdteam .rd-debate-view { padding:20px 24px; flex:1; }
+        #page-rdteam .rd-debate-title { font-size:1.1rem; font-weight:700; margin-bottom:4px; }
+        #page-rdteam .rd-debate-meta { font-size:.78rem; color:var(--muted); margin-bottom:18px; }
+        #page-rdteam .rd-round-label { display:flex; align-items:center; gap:9px; margin:18px 0 10px; font-size:.74rem; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); font-weight:600; }
+        #page-rdteam .rd-round-label::before, #page-rdteam .rd-round-label::after { content:''; flex:1; height:1px; background:var(--border); }
+        #page-rdteam .rd-msg-wrap { margin-bottom:12px; animation:rdfadeIn .3s ease; }
+        @keyframes rdfadeIn { from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)} }
+        #page-rdteam .rd-msg-header { display:flex; align-items:center; gap:7px; margin-bottom:5px; }
+        #page-rdteam .rd-msg-emoji { font-size:1.1rem; }
+        #page-rdteam .rd-msg-name { font-weight:700; font-size:.87rem; }
+        #page-rdteam .rd-msg-role { font-size:.7rem; color:var(--muted); }
+        #page-rdteam .rd-msg-round { font-size:.66rem; color:var(--muted); margin-left:auto; }
+        #page-rdteam .rd-msg-body { background:var(--surface); border:1px solid var(--border); border-radius:9px; padding:12px 14px; font-size:.84rem; line-height:1.65; }
+        #page-rdteam .rd-msg-body ul { padding-left:16px; display:flex; flex-direction:column; gap:4px; }
+        #page-rdteam .rd-thinking-wrap { margin-bottom:12px; opacity:.7; }
+        #page-rdteam .rd-thinking-body { background:var(--surface); border:1px solid var(--border); border-radius:9px; padding:10px 14px; display:flex; align-items:center; gap:9px; font-size:.82rem; color:var(--muted); }
+        #page-rdteam .rd-thinking-dots span { animation:rdblink 1.2s infinite; }
+        #page-rdteam .rd-thinking-dots span:nth-child(2) { animation-delay:.2s; }
+        #page-rdteam .rd-thinking-dots span:nth-child(3) { animation-delay:.4s; }
+        @keyframes rdblink { 0%,80%,100%{opacity:0}40%{opacity:1} }
+        #page-rdteam .rd-memo-card { background:var(--surface); border:2px solid var(--atlas); border-radius:10px; overflow:hidden; margin-top:20px; }
+        #page-rdteam .rd-memo-header { background:linear-gradient(135deg,rgba(56,189,248,.1),rgba(124,111,255,.1)); padding:14px 18px; display:flex; align-items:center; gap:9px; border-bottom:1px solid var(--border); }
+        #page-rdteam .rd-memo-header h3 { font-size:.95rem; font-weight:700; }
+        #page-rdteam .rd-memo-body { padding:18px; font-size:.86rem; line-height:1.75; }
+        #page-rdteam .rd-memo-body h2 { font-size:.95rem; font-weight:700; color:var(--accent2); margin:14px 0 6px; }
+        #page-rdteam .rd-memo-body h2:first-child { margin-top:0; }
+        #page-rdteam .rd-memo-body h3 { font-size:.88rem; font-weight:700; margin:10px 0 4px; }
+        #page-rdteam .rd-memo-body ul, #page-rdteam .rd-memo-body ol { padding-left:18px; margin:5px 0; display:flex; flex-direction:column; gap:3px; }
+        #page-rdteam .rd-memo-body strong { color:var(--accent); }
+        #page-rdteam .rd-memo-actions { padding:12px 18px; border-top:1px solid var(--border); display:flex; gap:7px; }
+        #page-rdteam .rd-mode-pill { font-size:.68rem; padding:2px 9px; border-radius:20px; font-weight:600; }
+        #page-rdteam .rd-mode-live { background:rgba(0,212,170,.15); color:var(--accent2); }
+        #page-rdteam .rd-mode-mock { background:rgba(245,158,11,.15); color:var(--warn); }
+        #page-rdteam .rd-empty { text-align:center; padding:30px 16px; color:var(--muted); font-size:.85rem; }
+      </style>
+      <div class="page-header">
+        <div><h2>🔬 R&amp;D Team</h2><p>5 AI-agenten analyseren je projecten en schrijven een strategisch memo</p></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="rd-mode-pill" id="rd-mode-pill">…</span>
+          <button class="btn btn-primary" onclick="rdShowStart()">+ Nieuwe Sessie</button>
+        </div>
+      </div>
+      <div class="rd-layout">
+        <aside class="rd-sidebar">
+          <div class="rd-sidebar-header">
+            <h3>Sessies</h3>
+            <button class="btn btn-secondary btn-sm" onclick="rdLoadSessions()">↻</button>
+          </div>
+          <div class="rd-session-list" id="rd-session-list">
+            <div class="rd-empty">Nog geen sessies.</div>
+          </div>
+        </aside>
+        <div class="rd-main" id="rd-main"></div>
       </div>
     </div>
 
