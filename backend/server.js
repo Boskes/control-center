@@ -221,6 +221,42 @@ app.get('/api/openclaw/agents', (_req, res) => {
   }
 });
 
+// ── Gateway proxy routes ──────────────────────────────────────────────────────
+
+// Proxy: GET /api/gateway/cron → OpenClaw gateway cron jobs
+app.get('/api/gateway/cron', async (_req, res) => {
+  try {
+    const r = await fetch('http://localhost:2512/api/cron/jobs');
+    const data = await r.json();
+    res.json(data);
+  } catch (e) {
+    res.status(503).json({ error: 'Gateway niet bereikbaar', jobs: [] });
+  }
+});
+
+// Proxy: POST /api/gateway/cron/:id/run → trigger cron job
+app.post('/api/gateway/cron/:id/run', async (req, res) => {
+  try {
+    const r = await fetch(`http://localhost:2512/api/cron/jobs/${req.params.id}/run`, { method: 'POST' });
+    const data = await r.json();
+    res.json(data);
+  } catch (e) {
+    res.status(503).json({ error: 'Gateway niet bereikbaar' });
+  }
+});
+
+// Proxy: GET /api/gateway/sessions → OpenClaw subagent sessions
+app.get('/api/gateway/sessions', async (req, res) => {
+  try {
+    const qs = new URLSearchParams(req.query).toString();
+    const r = await fetch(`http://localhost:2512/api/sessions?${qs}`);
+    const data = await r.json();
+    res.json(data);
+  } catch (e) {
+    res.status(503).json({ error: 'Gateway niet bereikbaar', sessions: [] });
+  }
+});
+
 // ── Catch-all → SPA ──────────────────────────────────────────────────────────
 app.get('*', (_req, res) => {
   res.sendFile(path.join(__dirname, '../frontend', 'index.html'));

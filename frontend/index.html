@@ -520,6 +520,66 @@
     }
     .step-card h4 { font-size: .95rem; margin-bottom: 6px; }
     .step-card p  { font-size: .82rem; color: var(--muted); line-height: 1.5; }
+
+    /* ══════════════════════════════════════════
+       AGENT COMMAND CENTER
+    ══════════════════════════════════════════ */
+    .agent-tab-btn {
+      padding: 7px 16px;
+      border-radius: 7px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-size: .83rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .12s;
+      white-space: nowrap;
+    }
+    .agent-tab-btn:hover { background: var(--surface2); color: var(--text); }
+    .agent-tab-btn.active { background: var(--accent); color: #fff; }
+
+    .agent-tab-panel { display: none; }
+    .agent-tab-panel.active { display: block; }
+
+    .agent-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .agent-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--accent);
+    }
+
+    .gateway-table-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .gateway-offline {
+      background: rgba(255,85,114,.08);
+      border: 1px solid rgba(255,85,114,.25);
+      border-radius: 10px;
+      padding: 20px 24px;
+      font-size: .87rem;
+      color: var(--danger);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .status-running  { background: rgba(124,111,255,.15); color: #a89fff; border-radius: 20px; font-size: .7rem; padding: 2px 9px; font-weight: 600; }
+    .status-complete { background: rgba(0,212,170,.15);   color: #4eeacb; border-radius: 20px; font-size: .7rem; padding: 2px 9px; font-weight: 600; }
+    .status-failed   { background: rgba(255,85,114,.15);  color: #ff8899; border-radius: 20px; font-size: .7rem; padding: 2px 9px; font-weight: 600; }
+    .status-enabled  { background: rgba(0,212,170,.15);   color: #4eeacb; border-radius: 20px; font-size: .7rem; padding: 2px 9px; font-weight: 600; }
+    .status-disabled { background: rgba(245,158,11,.15);  color: #fcd34d; border-radius: 20px; font-size: .7rem; padding: 2px 9px; font-weight: 600; }
   </style>
 </head>
 <body>
@@ -633,42 +693,63 @@
     <div class="page" id="page-agents">
       <div class="page-header">
         <div>
-          <h2>🤖 OpenClaw Agents</h2>
-          <p>Alle geconfigureerde AI-agents in jouw OpenClaw setup</p>
+          <h2>🤖 Agent Command Center</h2>
+          <p>Agents, geplande taken, actieve sessies en taakhistorie</p>
         </div>
-        <button class="btn btn-secondary" onclick="loadAgents()">↻ Vernieuwen</button>
+        <button class="btn btn-secondary" onclick="refreshAgentsTab()">↻ Vernieuwen</button>
       </div>
 
-      <!-- Info banner -->
-      <div style="background:rgba(124,111,255,.08);border:1px solid rgba(124,111,255,.25);border-radius:10px;padding:14px 18px;margin-bottom:24px;font-size:.85rem;line-height:1.6">
-        <strong style="color:var(--accent)">ℹ️ Verschil: Agents vs Apps</strong><br>
-        <strong>OpenClaw Agents</strong> (hieronder) zijn AI-instanties met een eigen identiteit, model en werkruimte. Ze voeren gesprekken.<br>
-        <strong>Control Center Apps</strong> zijn jouw Node.js servers op poorten 3000-3007. Ze zijn de <em>tools</em> die de agents gebruiken.
+      <!-- Sub-tabs -->
+      <div style="display:flex;gap:4px;margin-bottom:24px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;width:fit-content">
+        <button class="agent-tab-btn active" data-tab="agents-overview" onclick="switchAgentTab('agents-overview')">🤖 Agents</button>
+        <button class="agent-tab-btn" data-tab="agents-planned" onclick="switchAgentTab('agents-planned')">📅 Gepland</button>
+        <button class="agent-tab-btn" data-tab="agents-active" onclick="switchAgentTab('agents-active')">⚡ Actief</button>
+        <button class="agent-tab-btn" data-tab="agents-completed" onclick="switchAgentTab('agents-completed')">✅ Voltooid</button>
       </div>
 
-      <div class="section-title">OpenClaw Agents</div>
-      <div id="agents-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-bottom:32px"></div>
+      <!-- TAB: Agents Overview -->
+      <div class="agent-tab-panel active" id="agents-overview">
+        <div style="background:rgba(124,111,255,.08);border:1px solid rgba(124,111,255,.25);border-radius:10px;padding:14px 18px;margin-bottom:24px;font-size:.85rem;line-height:1.6">
+          <strong style="color:var(--accent)">ℹ️ Verschil: Agents vs Apps</strong><br>
+          <strong>OpenClaw Agents</strong> zijn AI-instanties met een eigen identiteit, model en werkruimte.<br>
+          <strong>Control Center Apps</strong> zijn jouw Node.js servers — de <em>tools</em> die agents gebruiken.
+        </div>
+        <div class="section-title">OpenClaw Agents</div>
+        <div id="agents-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px"></div>
+      </div>
 
-      <div class="section-title">Control Center Apps als Tools</div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
-        <table style="width:100%;border-collapse:collapse">
-          <thead>
-            <tr style="background:var(--surface2)">
-              <th style="padding:10px 16px;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600">App</th>
-              <th style="padding:10px 16px;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600">Poort</th>
-              <th style="padding:10px 16px;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600">Wat Mike ermee kan doen</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr style="border-top:1px solid var(--border)"><td style="padding:12px 16px">📊 Activity Dashboard</td><td style="padding:12px 16px;color:var(--muted)">:3001</td><td style="padding:12px 16px;font-size:.83rem;color:var(--muted)">Activiteiten loggen na elke taak</td></tr>
-            <tr style="border-top:1px solid var(--border)"><td style="padding:12px 16px">🧠 Daily Memory</td><td style="padding:12px 16px;color:var(--muted)">:3004</td><td style="padding:12px 16px;font-size:.83rem;color:var(--muted)">Gesprekken loggen en terugzoeken</td></tr>
-            <tr style="border-top:1px solid var(--border)"><td style="padding:12px 16px">📈 Trend Tracker</td><td style="padding:12px 16px;color:var(--muted)">:3005</td><td style="padding:12px 16px;font-size:.83rem;color:var(--muted)">Trending AI-content ophalen uit Reddit & YouTube</td></tr>
-            <tr style="border-top:1px solid var(--border)"><td style="padding:12px 16px">🧪 R&D Team</td><td style="padding:12px 16px;color:var(--muted)">:3006</td><td style="padding:12px 16px;font-size:.83rem;color:var(--muted)">AI-debat starten, strategie memo ophalen</td></tr>
-            <tr style="border-top:1px solid var(--border)"><td style="padding:12px 16px">🤖 Autonome Medewerker</td><td style="padding:12px 16px;color:var(--muted)">:3007</td><td style="padding:12px 16px;font-size:.83rem;color:var(--muted)">Nachtelijke taken bekijken, handmatig starten</td></tr>
-            <tr style="border-top:1px solid var(--border)"><td style="padding:12px 16px">🚗 GarageOS</td><td style="padding:12px 16px;color:var(--muted)">:3002</td><td style="padding:12px 16px;font-size:.83rem;color:var(--muted)">Garage interface (in ontwikkeling)</td></tr>
-            <tr style="border-top:1px solid var(--border)"><td style="padding:12px 16px">🎬 YouTube Transcript</td><td style="padding:12px 16px;color:var(--muted)">:3003</td><td style="padding:12px 16px;font-size:.83rem;color:var(--muted)">Transcripts ophalen en verwerken</td></tr>
-          </tbody>
-        </table>
+      <!-- TAB: Geplande Taken -->
+      <div class="agent-tab-panel" id="agents-planned">
+        <div class="section-title">Geplande Cron Jobs</div>
+        <div id="planned-container">
+          <div style="color:var(--muted);font-size:.85rem;padding:10px">Laden...</div>
+        </div>
+      </div>
+
+      <!-- TAB: Actieve Taken -->
+      <div class="agent-tab-panel" id="agents-active">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div class="section-title" style="margin-bottom:0">Actieve Subagent Sessies</div>
+          <span style="font-size:.75rem;color:var(--muted)" id="active-refresh-label">Auto-refresh elke 10s</span>
+        </div>
+        <div id="active-container">
+          <div style="color:var(--muted);font-size:.85rem;padding:10px">Laden...</div>
+        </div>
+      </div>
+
+      <!-- TAB: Voltooide Taken -->
+      <div class="agent-tab-panel" id="agents-completed">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div class="section-title" style="margin-bottom:0">Taakhistorie (Voltooid)</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span style="font-size:.75rem;color:var(--muted)" id="completed-paging-label"></span>
+            <button class="btn btn-secondary btn-sm" id="completed-prev" onclick="completedPage(-1)" disabled>‹ Vorige</button>
+            <button class="btn btn-secondary btn-sm" id="completed-next" onclick="completedPage(1)">Volgende ›</button>
+          </div>
+        </div>
+        <div id="completed-container">
+          <div style="color:var(--muted);font-size:.85rem;padding:10px">Laden...</div>
+        </div>
       </div>
     </div>
 
@@ -1175,7 +1256,41 @@ document.querySelectorAll('.modal-overlay').forEach(m => {
   m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
 });
 
-// ── Agents ────────────────────────────────────────────────────────
+// ══════════════════════════════════════════
+// AGENT COMMAND CENTER
+// ══════════════════════════════════════════
+
+let agentActiveTab = 'agents-overview';
+let activeRefreshTimer = null;
+let completedAllSessions = [];
+let completedCurrentPage = 0;
+const COMPLETED_PAGE_SIZE = 10;
+
+function switchAgentTab(tab) {
+  agentActiveTab = tab;
+  document.querySelectorAll('.agent-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.agent-tab-panel').forEach(p => p.classList.toggle('active', p.id === tab));
+
+  // Stop active refresh if leaving active tab
+  if (tab !== 'agents-active' && activeRefreshTimer) {
+    clearInterval(activeRefreshTimer);
+    activeRefreshTimer = null;
+  }
+
+  if (tab === 'agents-overview') loadAgents();
+  if (tab === 'agents-planned')  loadPlanned();
+  if (tab === 'agents-active')   startActiveRefresh();
+  if (tab === 'agents-completed') loadCompleted();
+}
+
+function refreshAgentsTab() {
+  if (agentActiveTab === 'agents-overview') loadAgents();
+  if (agentActiveTab === 'agents-planned')  loadPlanned();
+  if (agentActiveTab === 'agents-active')   loadActive();
+  if (agentActiveTab === 'agents-completed') loadCompleted();
+}
+
+// ── Agent overview ────────────────────────────────────────────────
 async function loadAgents() {
   const grid = document.getElementById('agents-grid');
   if (!grid) return;
@@ -1187,8 +1302,7 @@ async function loadAgents() {
       return;
     }
     grid.innerHTML = data.agents.map(a => `
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;position:relative;overflow:hidden">
-        <div style="position:absolute;top:0;left:0;right:0;height:3px;background:var(--accent)"></div>
+      <div class="agent-card">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
           <div style="font-size:2rem;background:var(--surface2);border-radius:10px;width:48px;height:48px;display:flex;align-items:center;justify-content:center">${a.emoji}</div>
           <div>
@@ -1196,7 +1310,7 @@ async function loadAgents() {
             <div style="font-size:.75rem;color:var(--muted)">id: ${a.id}</div>
           </div>
           <div style="margin-left:auto">
-            <span style="background:rgba(0,212,170,.15);color:var(--accent2);border-radius:20px;font-size:.7rem;padding:2px 9px;font-weight:600">✅ Actief</span>
+            <span class="status-enabled">✅ Online</span>
           </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:7px">
@@ -1219,11 +1333,235 @@ async function loadAgents() {
   }
 }
 
+// ── Geplande taken ────────────────────────────────────────────────
+async function loadPlanned() {
+  const el = document.getElementById('planned-container');
+  el.innerHTML = '<div style="color:var(--muted);font-size:.85rem;padding:10px">Laden...</div>';
+  try {
+    const data = await fetch(`${API}/gateway/cron`).then(r => r.json());
+    const jobs = data.jobs || (Array.isArray(data) ? data : []);
+
+    if (data.error && !jobs.length) {
+      el.innerHTML = `<div class="gateway-offline">🔌 <div><strong>Gateway niet bereikbaar</strong><br><span style="font-size:.82rem;opacity:.8">OpenClaw gateway (poort 2512) is offline of niet bereikbaar.</span></div></div>`;
+      return;
+    }
+
+    if (!jobs.length) {
+      el.innerHTML = '<div class="empty-state"><div class="empty-icon">📅</div><p>Geen geplande taken gevonden.</p></div>';
+      return;
+    }
+
+    el.innerHTML = `
+      <div class="gateway-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Naam</th>
+              <th>Schema</th>
+              <th>Payload</th>
+              <th>Status</th>
+              <th style="text-align:right">Acties</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${jobs.map(j => {
+              const payload = j.payload ? JSON.stringify(j.payload).slice(0, 60) + (JSON.stringify(j.payload).length > 60 ? '…' : '') : '—';
+              const enabled = j.enabled !== false;
+              return `
+                <tr>
+                  <td><strong>${j.name || j.id || '—'}</strong></td>
+                  <td style="font-family:monospace;font-size:.8rem;color:var(--muted)">${j.schedule || j.cron || '—'}</td>
+                  <td style="font-family:monospace;font-size:.75rem;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${payload}</td>
+                  <td><span class="${enabled ? 'status-enabled' : 'status-disabled'}">${enabled ? 'Enabled' : 'Disabled'}</span></td>
+                  <td>
+                    <div class="td-actions">
+                      <button class="btn btn-secondary btn-sm" onclick="runCronJob('${j.id}')">▶ Run</button>
+                    </div>
+                  </td>
+                </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  } catch(e) {
+    el.innerHTML = `<div class="gateway-offline">🔌 <div><strong>Fout bij laden</strong><br><span style="font-size:.82rem;opacity:.8">${e.message}</span></div></div>`;
+  }
+}
+
+async function runCronJob(id) {
+  try {
+    const r = await fetch(`${API}/gateway/cron/${id}/run`, { method: 'POST' });
+    const data = await r.json();
+    toast(data.error ? `Fout: ${data.error}` : `✅ Job "${id}" gestart!`, data.error ? 'error' : 'success');
+  } catch(e) {
+    toast(`Fout: ${e.message}`, 'error');
+  }
+}
+
+// ── Actieve taken ─────────────────────────────────────────────────
+function startActiveRefresh() {
+  loadActive();
+  if (!activeRefreshTimer) {
+    activeRefreshTimer = setInterval(() => {
+      if (agentActiveTab === 'agents-active') loadActive();
+      else { clearInterval(activeRefreshTimer); activeRefreshTimer = null; }
+    }, 10000);
+  }
+}
+
+function fmtDuration(startedAt) {
+  if (!startedAt) return '—';
+  const sec = Math.floor((Date.now() - new Date(startedAt)) / 1000);
+  if (sec < 60) return `${sec}s`;
+  if (sec < 3600) return `${Math.floor(sec/60)}m ${sec%60}s`;
+  return `${Math.floor(sec/3600)}h ${Math.floor((sec%3600)/60)}m`;
+}
+
+async function loadActive() {
+  const el = document.getElementById('active-container');
+  try {
+    const data = await fetch(`${API}/gateway/sessions?kinds=subagent&limit=10`).then(r => r.json());
+    const sessions = data.sessions || (Array.isArray(data) ? data : []);
+
+    if (data.error && !sessions.length) {
+      el.innerHTML = `<div class="gateway-offline">🔌 <div><strong>Gateway niet bereikbaar</strong><br><span style="font-size:.82rem;opacity:.8">OpenClaw gateway (poort 2512) is offline.</span></div></div>`;
+      return;
+    }
+
+    const running = sessions.filter(s => s.status === 'running' || s.status === 'active' || !s.endedAt);
+
+    if (!running.length) {
+      el.innerHTML = `<div class="empty-state"><div class="empty-icon">⚡</div><p>Geen actieve subagent sessies op dit moment.</p></div>`;
+      return;
+    }
+
+    el.innerHTML = `
+      <div class="gateway-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Session ID</th>
+              <th>Status</th>
+              <th>Gestart</th>
+              <th>Duur</th>
+              <th>Model</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${running.map(s => {
+              const shortId = (s.id || '').slice(0, 8) + '…';
+              const started = s.startedAt ? new Date(s.startedAt).toLocaleTimeString('nl-BE') : '—';
+              const model = (s.model || s.agentModel || '—').split('/').pop();
+              return `
+                <tr>
+                  <td style="font-family:monospace;font-size:.78rem;color:var(--muted)">${shortId}</td>
+                  <td><span class="status-running">⚡ Running</span></td>
+                  <td style="color:var(--muted);font-size:.83rem">${started}</td>
+                  <td style="font-family:monospace;font-size:.82rem">${fmtDuration(s.startedAt)}</td>
+                  <td style="font-size:.8rem;color:var(--muted)">${model}</td>
+                </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  } catch(e) {
+    el.innerHTML = `<div class="gateway-offline">🔌 <div><strong>Fout bij laden</strong><br><span style="font-size:.82rem;opacity:.8">${e.message}</span></div></div>`;
+  }
+}
+
+// ── Voltooide taken ────────────────────────────────────────────────
+async function loadCompleted() {
+  const el = document.getElementById('completed-container');
+  el.innerHTML = '<div style="color:var(--muted);font-size:.85rem;padding:10px">Laden...</div>';
+  try {
+    const data = await fetch(`${API}/gateway/sessions?kinds=subagent&limit=50&status=completed`).then(r => r.json());
+    completedAllSessions = data.sessions || (Array.isArray(data) ? data : []);
+    completedCurrentPage = 0;
+
+    if (data.error && !completedAllSessions.length) {
+      el.innerHTML = `<div class="gateway-offline">🔌 <div><strong>Gateway niet bereikbaar</strong><br><span style="font-size:.82rem;opacity:.8">OpenClaw gateway (poort 2512) is offline.</span></div></div>`;
+      return;
+    }
+
+    renderCompletedPage();
+  } catch(e) {
+    el.innerHTML = `<div class="gateway-offline">🔌 <div><strong>Fout bij laden</strong><br><span style="font-size:.82rem;opacity:.8">${e.message}</span></div></div>`;
+  }
+}
+
+function fmtSessionDuration(s) {
+  if (!s.startedAt || !s.endedAt) return '—';
+  const sec = Math.floor((new Date(s.endedAt) - new Date(s.startedAt)) / 1000);
+  if (sec < 60) return `${sec}s`;
+  if (sec < 3600) return `${Math.floor(sec/60)}m ${sec%60}s`;
+  return `${Math.floor(sec/3600)}h ${Math.floor((sec%3600)/60)}m`;
+}
+
+function renderCompletedPage() {
+  const el = document.getElementById('completed-container');
+  const total = completedAllSessions.length;
+  const totalPages = Math.ceil(total / COMPLETED_PAGE_SIZE);
+  const start = completedCurrentPage * COMPLETED_PAGE_SIZE;
+  const page = completedAllSessions.slice(start, start + COMPLETED_PAGE_SIZE);
+
+  document.getElementById('completed-paging-label').textContent =
+    total ? `${start + 1}–${Math.min(start + COMPLETED_PAGE_SIZE, total)} van ${total}` : '';
+  document.getElementById('completed-prev').disabled = completedCurrentPage === 0;
+  document.getElementById('completed-next').disabled = completedCurrentPage >= totalPages - 1;
+
+  if (!page.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">✅</div><p>Geen voltooide taken gevonden.</p></div>`;
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="gateway-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Datum</th>
+            <th>Session ID</th>
+            <th>Duur</th>
+            <th>Model</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${page.map(s => {
+            const date = s.endedAt ? new Date(s.endedAt).toLocaleString('nl-BE', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+            const shortId = (s.id || '').slice(0, 8) + '…';
+            const model = (s.model || s.agentModel || '—').split('/').pop();
+            const statusClass = s.status === 'failed' ? 'status-failed' : 'status-complete';
+            const statusLabel = s.status === 'failed' ? '❌ Mislukt' : '✅ Voltooid';
+            return `
+              <tr>
+                <td style="color:var(--muted);font-size:.83rem">${date}</td>
+                <td style="font-family:monospace;font-size:.78rem;color:var(--muted)">${shortId}</td>
+                <td style="font-family:monospace;font-size:.82rem">${fmtSessionDuration(s)}</td>
+                <td style="font-size:.8rem;color:var(--muted)">${model}</td>
+                <td><span class="${statusClass}">${statusLabel}</span></td>
+              </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function completedPage(dir) {
+  const total = completedAllSessions.length;
+  const totalPages = Math.ceil(total / COMPLETED_PAGE_SIZE);
+  completedCurrentPage = Math.max(0, Math.min(completedCurrentPage + dir, totalPages - 1));
+  renderCompletedPage();
+}
+
 // Laad agents wanneer pagina actief wordt
 const _origNav = nav;
 nav = function(page) {
   _origNav(page);
-  if (page === 'agents') loadAgents();
+  if (page === 'agents') {
+    agentActiveTab = 'agents-overview';
+    loadAgents();
+  }
 };
 
 // ── Boot ──────────────────────────────────────────────────────────
