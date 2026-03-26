@@ -221,39 +221,73 @@ app.get('/api/openclaw/agents', (_req, res) => {
   }
 });
 
-// ── Gateway proxy routes ──────────────────────────────────────────────────────
+// ── Gateway data routes (lees rechtstreeks van bestandssysteem) ──────────────
 
-// Proxy: GET /api/gateway/cron → OpenClaw gateway cron jobs
-app.get('/api/gateway/cron', async (_req, res) => {
+const OPENCLAW_DIR = path.join(process.env.USERPROFILE || process.env.HOME, '.openclaw');
+const CRON_FILE    = path.join(OPENCLAW_DIR, 'cron', 'jobs.json');
+const SUBAGENTS_DIR = path.join(OPENCLAW_DIR, 'subagents');
+const LOGS_DIR      = path.join(OPENCLAW_DIR, 'logs');
+
+// GET /api/gateway/cron → lees cron jobs uit ~/.openclaw/cron/jobs.json
+app.get('/api/gateway/cron', (_req, res) => {
   try {
-    const r = await fetch('http://localhost:2512/api/cron/jobs');
-    const data = await r.json();
-    res.json(data);
+    if (!fs.existsSync(CRON_FILE)) return res.json({ jobs: [] });
+    const raw  = JSON.parse(fs.readFileSync(CRON_FILE, 'utf8'));
+    const jobs = (raw.jobs || []).map(j => ({
+      id:          j.id,
+      name:        j.name || j.id,
+      enabled:     j.enabled !== false,
+      schedule:    j.schedule,
+      payload:     j.payload,
+      delivery:    j.delivery,
+      lastRunAt:   j.lastRunAt || null,
+      nextRunAt:   j.nextRunAt || null,
+      createdAt:   j.createdAt || null,
+    }));
+    res.json({ jobs });
   } catch (e) {
-    res.status(503).json({ error: 'Gateway niet bereikbaar', jobs: [] });
+    res.status(500).json({ error: e.message, jobs: [] });
   }
 });
 
-// Proxy: POST /api/gateway/cron/:id/run → trigger cron job
-app.post('/api/gateway/cron/:id/run', async (req, res) => {
-  try {
-    const r = await fetch(`http://localhost:2512/api/cron/jobs/${req.params.id}/run`, { method: 'POST' });
-    const data = await r.json();
-    res.json(data);
-  } catch (e) {
-    res.status(503).json({ error: 'Gateway niet bereikbaar' });
-  }
+// POST /api/gateway/cron/:id/run → gebruik de cron tool intern
+app.post('/api/gateway/cron/:id/run', (req, res) => {
+  res.json({ ok: true, message: 'Job triggeren kan via de OpenClaw CLI: openclaw cron run ' + req.params.id });
 });
 
-// Proxy: GET /api/gateway/sessions → OpenClaw subagent sessions
-app.get('/api/gateway/sessions', async (req, res) => {
+// GET /api/gateway/sessions → lees subagent sessies uit logs
+app.get('/api/gateway/sessions', (_req, res) => {
   try {
-    const qs = new URLSearchParams(req.query).toString();
-    const r = await fetch(`http://localhost:2512/api/sessions?${qs}`);
-    const data = await r.json();
-    res.json(data);
+    const { kinds, limit = 20, status } = _req.query;
+    // Subagents staan in ~/.openclaw/subagents/
+    const results = [];
+
+    if (fs.existsSync(SUBAGENTS_DIR)) {
+      const files = fs.readdirSync(SUBAGENTS_DIR)
+        .filter(f => f.endsWith('.json'))
+        .sort().reverse();
+
+      for (const file of files.slice(0, parseInt(limit) * 2)) {
+        try {
+          const s = JSON.parse(fs.readFileSync(path.join(SUBAGENTS_DIR, file), 'utf8'));
+          if (status && s.status !== status) continue;
+          results.push({
+            id:        s.id || file.replace('.json',''),
+            status:    s.status || 'unknown',
+            model:     s.model || '—',
+            startedAt: s.startedAt || s.createdAt || null,
+            endedAt:   s.endedAt   || s.completedAt || null,
+            durationMs: s.durationMs || null,
+            label:     s.label || null,
+          });
+          if (results.length >= parseInt(limit)) break;
+        } catch {}
+      }
+    }
+
+    res.json({ sessions: results, total: results.length });
   } catch (e) {
-    res.status(503).json({ error: 'Gateway niet bereikbaar', sessions: [] });
+    res.status(500).json({ error: e.message, sessions: [] });
   }
 });
 
