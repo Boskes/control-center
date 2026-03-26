@@ -257,13 +257,13 @@ app.get('/api/gateway/sessions', async (req, res) => {
   }
 });
 
-// ── Catch-all → SPA ──────────────────────────────────────────────────────────
+// ── Boot ──────────────────────────────────────────────────────────────────────
+await loadModules();
+
+// ── Catch-all → SPA (MOET na loadModules staan!) ─────────────────────────────
 app.get('*', (_req, res) => {
   res.sendFile(path.join(__dirname, '../frontend', 'index.html'));
 });
-
-// ── Boot ──────────────────────────────────────────────────────────────────────
-await loadModules();
 
 app.listen(PORT, () => {
   console.log(`\n🤖 Mike Control Center v2.0.0`);
