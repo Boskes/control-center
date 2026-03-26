@@ -63,6 +63,7 @@ function initData() {
 let isPolling = false;
 let lastPoll  = null;
 let pollStatus = 'idle';
+let youtubeError = null; // null | 'quota' | 'no-key' | error string
 
 async function pollAll() {
   if (isPolling) return;
@@ -139,9 +140,19 @@ async function pollAll() {
           }
         }
         console.log(`  ✅ [Trends] YouTube [${topic.label}]: ${videos.length} videos`);
+        youtubeError = null; // reset error
       } catch (e) {
-        console.warn(`  ⚠️  [Trends] YouTube [${topic.label}] error:`, e.message);
+        const msg = e.message || '';
+        if (msg.includes('403') || msg.toLowerCase().includes('quota') || msg.toLowerCase().includes('forbidden')) {
+          youtubeError = 'quota';
+          console.warn(`  ⚠️  [Trends] YouTube quota bereikt of key ongeldig`);
+        } else {
+          youtubeError = msg;
+          console.warn(`  ⚠️  [Trends] YouTube [${topic.label}] error:`, msg);
+        }
       }
+    } else if (!process.env.YOUTUBE_API_KEY) {
+      youtubeError = 'no-key';
     }
 
     results.topics[topic.id] = topicResults;
@@ -189,6 +200,7 @@ router.get('/status', (_req, res) => {
     unseenAlerts: unseen,
     hasRedditAuth:  !!(process.env.REDDIT_CLIENT_ID && process.env.REDDIT_CLIENT_SECRET),
     hasYouTubeAuth: !!process.env.YOUTUBE_API_KEY,
+    youtubeError,
     settings,
   });
 });

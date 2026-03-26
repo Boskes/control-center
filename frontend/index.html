@@ -2200,6 +2200,28 @@ async function trendLoad() {
     if (statusEl) statusEl.textContent = status.lastPoll ? `Laatste poll: ${new Date(status.lastPoll).toLocaleString('nl-BE')}` : 'Nog niet gepolled';
     const unseenEl = document.getElementById('trend-unseen-count');
     if (unseenEl && status.unseenAlerts) unseenEl.textContent = status.unseenAlerts;
+    // YouTube status melding
+    const ytStatusEl = document.getElementById('tr-yt-status');
+    const ytDotEl    = document.getElementById('tr-yt-dot');
+    if (ytStatusEl) {
+      if (status.youtubeError === 'quota') {
+        ytStatusEl.textContent = 'YouTube — ⚠️ Quota bereikt (reset om middernacht PST)';
+        ytStatusEl.style.color = 'var(--warn)';
+        if (ytDotEl) ytDotEl.style.background = 'var(--warn)';
+      } else if (status.youtubeError === 'no-key') {
+        ytStatusEl.textContent = 'YouTube — ❌ Geen API key';
+        ytStatusEl.style.color = 'var(--danger)';
+        if (ytDotEl) ytDotEl.style.background = 'var(--danger)';
+      } else if (status.youtubeError) {
+        ytStatusEl.textContent = `YouTube — ❌ ${status.youtubeError}`;
+        ytStatusEl.style.color = 'var(--danger)';
+        if (ytDotEl) ytDotEl.style.background = 'var(--danger)';
+      } else if (status.hasYouTubeAuth) {
+        ytStatusEl.textContent = 'YouTube ✅';
+        ytStatusEl.style.color = 'var(--accent2)';
+        if (ytDotEl) ytDotEl.style.background = 'var(--accent2)';
+      }
+    }
     const tabsEl = document.getElementById('trend-topic-tabs');
     if (tabsEl && topics.length) {
       tabsEl.innerHTML = topics.map(t =>
