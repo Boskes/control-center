@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mike Control Center</title>
+  <style>
+    :root {
+      --bg:       #0d0f18;
+      --surface:  #161926;
+      --surface2: #1e2235;
+      --surface3: #252a42;
+      --border:   #2a2f4a;
+      --accent:   #7c6fff;
+      --accent2:  #00d4aa;
+      --danger:   #ff5572;
+      --warn:     #f59e0b;
+      --text:     #e8eaf6;
+      --muted:    #7b7f9e;
+      --radius:   12px;
+    }
+
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    /* ══════════════════════════════════════════
+       TOPBAR
+    ══════════════════════════════════════════ */
+    .topbar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 28px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .topbar-logo { font-size: 24px; }
+    .topbar-title { font-size: 1.1rem; font-weight: 700; letter-spacing: -.01em; }
+    .topbar-version {
+      font-size: .7rem;
+      background: var(--accent);
+      color: #fff;
+      padding: 2px 7px;
+      border-radius: 20px;
+      font-weight: 600;
+    }
+    .topbar-spacer { flex: 1; }
+    .topbar-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: .8rem;
+      color: var(--muted);
+    }
+    .status-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--accent2);
+      box-shadow: 0 0 6px var(--accent2);
+    }
+
+    /* ══════════════════════════════════════════
+       LAYOUT
+    ══════════════════════════════════════════ */
+    .layout {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      height: calc(100vh - 60px);
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 220px;
+      flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 20px 12px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .nav-section {
+      font-size: .65rem;
+      text-transform: uppercase;
+      letter-spacing: .12em;
+      color: var(--muted);
+      padding: 12px 10px 6px;
+      font-weight: 600;
+    }
+    .nav-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: .87rem;
+      color: var(--muted);
+      transition: all .12s;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+    }
+    .nav-btn:hover { background: var(--surface2); color: var(--text); }
+    .nav-btn.active {
+      background: var(--accent);
+      color: #fff;
+    }
+    .nav-btn .icon { font-size: 1rem; flex-shrink: 0; }
+    .nav-btn .badge {
+      margin-left: auto;
+      background: rgba(255,255,255,.15);
+      border-radius: 20px;
+      font-size: .68rem;
+      padding: 1px 7px;
+      font-weight: 600;
+    }
+    .nav-btn:not(.active) .badge {
+      background: var(--surface2);
+      color: var(--muted);
+    }
+
+    /* ── Main content ── */
+    .main { flex: 1; overflow-y: auto; padding: 28px 32px; }
+
+    /* ══════════════════════════════════════════
+       PAGE: DASHBOARD
+    ══════════════════════════════════════════ */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+    .page-header h2 { font-size: 1.4rem; font-weight: 700; }
+    .page-header p  { font-size: .85rem; color: var(--muted); margin-top: 3px; }
+
+    /* Metrics row */
+    .metrics-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .metric-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .metric-card::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--accent);
+    }
+    .metric-card.green::after  { background: var(--accent2); }
+    .metric-card.yellow::after { background: var(--warn); }
+    .metric-card.red::after    { background: var(--danger); }
+    .metric-num  { font-size: 2rem; font-weight: 700; color: var(--accent); }
+    .metric-card.green  .metric-num { color: var(--accent2); }
+    .metric-card.yellow .metric-num { color: var(--warn); }
+    .metric-card.red    .metric-num { color: var(--danger); }
+    .metric-lbl  { font-size: .75rem; color: var(--muted); margin-top: 4px; }
+    .metric-icon { font-size: 1.4rem; margin-bottom: 10px; }
+
+    /* Project grid */
+    .section-title {
+      font-size: .85rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 16px;
+    }
+
+    .projects-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .project-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      cursor: pointer;
+      transition: all .15s;
+      position: relative;
+    }
+    .project-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(124,111,255,.12);
+    }
+    .project-card-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .project-icon { font-size: 1.8rem; }
+    .project-name { font-size: 1rem; font-weight: 600; line-height: 1.3; }
+    .project-desc { font-size: .82rem; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+    .project-card-footer {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+    .status-pill {
+      font-size: .7rem;
+      padding: 2px 9px;
+      border-radius: 20px;
+      font-weight: 600;
+    }
+    .status-active   { background: rgba(0,212,170,.15); color: #4eeacb; }
+    .status-paused   { background: rgba(245,158,11,.15); color: #fcd34d; }
+    .status-inactive { background: rgba(255,85,114,.15); color: #ff8899; }
+    .tag-chip {
+      font-size: .68rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 2px 7px;
+      color: var(--muted);
+    }
+    .project-link {
+      margin-left: auto;
+      font-size: .75rem;
+      color: var(--accent);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .project-link:hover { text-decoration: underline; }
+
+    /* ══════════════════════════════════════════
+       PAGE: PROJECTS (manage)
+    ══════════════════════════════════════════ */
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      padding: 9px 18px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: .87rem;
+      font-weight: 600;
+      transition: all .12s;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: #6b5fef; }
+    .btn-secondary {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-danger { background: rgba(255,85,114,.15); color: var(--danger); border: 1px solid rgba(255,85,114,.3); }
+    .btn-danger:hover { background: rgba(255,85,114,.25); }
+    .btn-sm { padding: 5px 12px; font-size: .78rem; }
+
+    .search-box {
+      flex: 1;
+      max-width: 320px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 14px;
+      color: var(--text);
+      font-size: .87rem;
+      outline: none;
+    }
+    .search-box:focus { border-color: var(--accent); }
+    .search-box::placeholder { color: var(--muted); }
+
+    /* Table */
+    .table-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    thead tr { background: var(--surface2); }
+    th {
+      padding: 12px 16px;
+      text-align: left;
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    td {
+      padding: 14px 16px;
+      font-size: .87rem;
+      border-top: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    tr:hover td { background: var(--surface2); }
+
+    .td-actions { display: flex; gap: 6px; justify-content: flex-end; }
+
+    /* ══════════════════════════════════════════
+       PAGE: WORKFLOWS
+    ══════════════════════════════════════════ */
+    .workflow-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .workflow-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .workflow-icon { font-size: 1.5rem; }
+    .workflow-info { flex: 1; min-width: 0; }
+    .workflow-name { font-weight: 600; font-size: .95rem; }
+    .workflow-meta { font-size: .78rem; color: var(--muted); margin-top: 3px; }
+    .workflow-actions { display: flex; gap: 8px; }
+
+    /* ══════════════════════════════════════════
+       MODAL
+    ══════════════════════════════════════════ */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      padding: 20px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 540px;
+      padding: 28px;
+      box-shadow: 0 24px 64px rgba(0,0,0,.5);
+    }
+    .modal-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .form-grid { display: flex; flex-direction: column; gap: 14px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-field label {
+      display: block;
+      font-size: .78rem;
+      color: var(--muted);
+      margin-bottom: 5px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .form-field input,
+    .form-field select,
+    .form-field textarea {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: var(--text);
+      font-size: .87rem;
+      outline: none;
+      font-family: inherit;
+      transition: border-color .12s;
+    }
+    .form-field input:focus,
+    .form-field select:focus,
+    .form-field textarea:focus { border-color: var(--accent); }
+    .form-field textarea { min-height: 80px; resize: vertical; }
+    .form-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ══════════════════════════════════════════
+       EMPTY STATE
+    ══════════════════════════════════════════ */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+    .empty-state .empty-icon { font-size: 3rem; margin-bottom: 12px; }
+    .empty-state p { font-size: .9rem; margin-bottom: 16px; }
+
+    /* ══════════════════════════════════════════
+       TOAST
+    ══════════════════════════════════════════ */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 999;
+    }
+    .toast {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-size: .85rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.4);
+      animation: slideIn .2s ease;
+      max-width: 320px;
+    }
+    .toast.success { border-left: 3px solid var(--accent2); }
+    .toast.error   { border-left: 3px solid var(--danger); }
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to   { transform: translateX(0);   opacity: 1; }
+    }
+
+    /* ══════════════════════════════════════════
+       GITHUB PAGE
+    ══════════════════════════════════════════ */
+    .info-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .info-box h3 { font-size: 1rem; margin-bottom: 8px; }
+    .info-box p  { font-size: .87rem; color: var(--muted); line-height: 1.6; margin-bottom: 12px; }
+    .info-box ul { padding-left: 20px; }
+    .info-box ul li { font-size: .87rem; color: var(--muted); line-height: 1.8; }
+    .code-block {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      font-family: 'Consolas', 'Cascadia Code', monospace;
+      font-size: .82rem;
+      color: var(--accent2);
+      overflow-x: auto;
+      white-space: pre;
+      margin-top: 10px;
+    }
+    .step-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px;
+    }
+    .step-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+    .step-num {
+      width: 28px; height: 28px;
+      background: var(--accent);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .8rem; font-weight: 700;
+      margin-bottom: 12px;
+    }
+    .step-card h4 { font-size: .95rem; margin-bottom: 6px; }
+    .step-card p  { font-size: .82rem; color: var(--muted); line-height: 1.5; }
+  </style>
+</head>
+<body>
+
+<!-- ── Topbar ─────────────────────────────────────────────────────── -->
+<header class="topbar">
+  <span class="topbar-logo">🤖</span>
+  <span class="topbar-title">Mike Control Center</span>
+  <span class="topbar-version">v2.0</span>
+  <div class="topbar-spacer"></div>
+  <div class="topbar-status">
+    <div class="status-dot" id="status-dot"></div>
+    <span id="status-text">Connecting…</span>
+  </div>
+</header>
+
+<!-- ── Layout ─────────────────────────────────────────────────────── -->
+<div class="layout">
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <span class="nav-section">Overview</span>
+    <button class="nav-btn active" data-page="dashboard" onclick="nav('dashboard')">
+      <span class="icon">🏠</span> Dashboard
+    </button>
+
+    <span class="nav-section">Manage</span>
+    <button class="nav-btn" data-page="projects" onclick="nav('projects')">
+      <span class="icon">📦</span> Projects
+      <span class="badge" id="nav-count-projects">0</span>
+    </button>
+    <button class="nav-btn" data-page="workflows" onclick="nav('workflows')">
+      <span class="icon">⚡</span> Workflows
+      <span class="badge" id="nav-count-workflows">0</span>
+    </button>
+
+    <span class="nav-section">Setup</span>
+    <button class="nav-btn" data-page="agents" onclick="nav('agents')">
+      <span class="icon">🤖</span> Agents
+    </button>
+    <button class="nav-btn" data-page="github" onclick="nav('github')">
+      <span class="icon">🐙</span> GitHub Setup
+    </button>
+  </nav>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- ═══════════════ DASHBOARD ═══════════════ -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-header">
+        <div>
+          <h2>Dashboard</h2>
+          <p>Overview of all your projects and system status</p>
+        </div>
+        <button class="btn btn-secondary" onclick="loadAll()">↻ Refresh</button>
+      </div>
+
+      <div class="metrics-row" id="metrics-row"></div>
+
+      <div class="section-title">Active Projects</div>
+      <div class="projects-grid" id="dashboard-projects"></div>
+    </div>
+
+    <!-- ═══════════════ PROJECTS ═══════════════ -->
+    <div class="page" id="page-projects">
+      <div class="page-header">
+        <div>
+          <h2>Projects</h2>
+          <p>Manage all your projects from one place</p>
+        </div>
+        <button class="btn btn-primary" onclick="openProjectModal()">+ New Project</button>
+      </div>
+
+      <div class="toolbar">
+        <input class="search-box" type="text" placeholder="Search projects…" id="proj-search" oninput="renderProjectTable()" />
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Icon</th>
+              <th>Name</th>
+              <th>Description</th>
+              <th>Status</th>
+              <th>Tags</th>
+              <th>Port</th>
+              <th style="text-align:right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="projects-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══════════════ WORKFLOWS ═══════════════ -->
+    <div class="page" id="page-workflows">
+      <div class="page-header">
+        <div>
+          <h2>Workflows</h2>
+          <p>Define automations and pipelines per project</p>
+        </div>
+        <button class="btn btn-primary" onclick="openWorkflowModal()">+ New Workflow</button>
+      </div>
+
+      <div id="workflow-container"></div>
+    </div>
+
+    <!-- ═══════════════ AGENTS ═══════════════ -->
+    <div class="page" id="page-agents">
+      <div class="page-header">
+        <div>
+          <h2>🤖 OpenClaw Agents</h2>
+          <p>Alle geconfigureerde AI-agents in jouw OpenClaw setup</p>
+        </div>
+        <button class="btn btn-secondary" onclick="loadAgents()">↻ Vernieuwen</button>
+      </div>
+
+      <!-- Info banner -->
+      <div style="background:rgba(124,111,255,.08);border:1px solid rgba(124,111,255,.25);border-radius:10px;padding:14px 18px;margin-bottom:24px;font-size:.85rem;line-height:1.6">
+        <strong style="color:var(--accent)">ℹ️ Verschil: Agents vs Apps</strong><br>
+        <strong>OpenClaw Agents</strong> (hieronder) zijn AI-instanties met een eigen identiteit, model en werkruimte. Ze voeren gesprekken.<br>
+        <strong>Control Center Apps</strong> zijn jouw Node.js servers op poorten 3000-3007. Ze zijn de <em>tools</em> die de agents gebruiken.
+      </div>
+
+      <div class="section-title">OpenClaw Agents</div>
+      <div id="agents-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-bottom:32px"></div>
+
+      <div class="section-title">Control Center Apps als Tools</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="background:var(--surface2)">
+              <th style="padding:10px 16px;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600">App</th>
+              <th style="padding:10px 16px;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600">Poort</th>
+              <th style="padding:10px 16px;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600">Wat Mike ermee kan doen</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-top:1px solid var(--border)"><td style="padding:12px 16px">📊 Activity Dashboard</td><td style="padding:12px 16px;color:var(--muted)">:3001</td><td style="padding:12px 16px;font-size:.83rem;color:var(--muted)">Activiteiten loggen na elke taak</td></tr>
+            <tr style="border-top:1px solid var(--border)"><td style="padding:12px 16px">🧠 Daily Memory</td><td style="padding:12px 16px;color:var(--muted)">:3004</td><td style="padding:12px 16px;font-size:.83rem;color:var(--muted)">Gesprekken loggen en terugzoeken</td></tr>
+            <tr style="border-top:1px solid var(--border)"><td style="padding:12px 16px">📈 Trend Tracker</td><td style="padding:12px 16px;color:var(--muted)">:3005</td><td style="padding:12px 16px;font-size:.83rem;color:var(--muted)">Trending AI-content ophalen uit Reddit & YouTube</td></tr>
+            <tr style="border-top:1px solid var(--border)"><td style="padding:12px 16px">🧪 R&D Team</td><td style="padding:12px 16px;color:var(--muted)">:3006</td><td style="padding:12px 16px;font-size:.83rem;color:var(--muted)">AI-debat starten, strategie memo ophalen</td></tr>
+            <tr style="border-top:1px solid var(--border)"><td style="padding:12px 16px">🤖 Autonome Medewerker</td><td style="padding:12px 16px;color:var(--muted)">:3007</td><td style="padding:12px 16px;font-size:.83rem;color:var(--muted)">Nachtelijke taken bekijken, handmatig starten</td></tr>
+            <tr style="border-top:1px solid var(--border)"><td style="padding:12px 16px">🚗 GarageOS</td><td style="padding:12px 16px;color:var(--muted)">:3002</td><td style="padding:12px 16px;font-size:.83rem;color:var(--muted)">Garage interface (in ontwikkeling)</td></tr>
+            <tr style="border-top:1px solid var(--border)"><td style="padding:12px 16px">🎬 YouTube Transcript</td><td style="padding:12px 16px;color:var(--muted)">:3003</td><td style="padding:12px 16px;font-size:.83rem;color:var(--muted)">Transcripts ophalen en verwerken</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══════════════ GITHUB ═══════════════ -->
+    <div class="page" id="page-github">
+      <div class="page-header">
+        <div>
+          <h2>🐙 GitHub Setup</h2>
+          <p>Version control, collaboration, and CI/CD — step by step</p>
+        </div>
+      </div>
+
+      <div class="step-grid" style="margin-bottom:28px">
+        <div class="step-card">
+          <div class="step-num">1</div>
+          <h4>Create a GitHub account</h4>
+          <p>Go to <strong>github.com</strong> and sign up. It's free. Use a professional username — this becomes your portfolio.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-num">2</div>
+          <h4>Install Git locally</h4>
+          <p>Download <strong>git-scm.com</strong>, install with defaults. Then configure your identity in the terminal below.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-num">3</div>
+          <h4>Create a repository</h4>
+          <p>On GitHub: New → name it <code>mike-control-center</code> → Private → Create. Copy the HTTPS URL.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-num">4</div>
+          <h4>Push your code</h4>
+          <p>Run the commands below to link your local workspace to GitHub and push everything.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-num">5</div>
+          <h4>Use branches</h4>
+          <p>Work on new features in a separate branch. Merge via Pull Request when ready. Keeps <code>main</code> stable.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-num">6</div>
+          <h4>GitHub Actions (CI/CD)</h4>
+          <p>Automate testing and deployment. Every push triggers your pipeline. Start simple, expand later.</p>
+        </div>
+      </div>
+
+      <div class="info-box">
+        <h3>⚙️ First-time Git setup</h3>
+        <p>Run this once after installing Git. Replace with your actual name and GitHub email.</p>
+        <div class="code-block">git config --global user.name "Your Name"
+git config --global user.email "you@example.com"
+git config --global init.defaultBranch main</div>
+      </div>
+
+      <div class="info-box">
+        <h3>🚀 Push this workspace to GitHub</h3>
+        <p>Run these commands from <code>C:\Users\jurge\.openclaw\workspace-main</code></p>
+        <div class="code-block">cd C:\Users\jurge\.openclaw\workspace-main
+
+# Initialize (already done — repo exists)
+git add .
+git commit -m "feat: initial Control Center v2 setup"
+
+# Link to GitHub (replace URL with yours)
+git remote add origin https://github.com/YOUR_USERNAME/mike-control-center.git
+
+# Push
+git branch -M main
+git push -u origin main</div>
+      </div>
+
+      <div class="info-box">
+        <h3>🌿 Daily workflow (after setup)</h3>
+        <p>These 3 commands are 90% of daily Git usage:</p>
+        <div class="code-block"># See what changed
+git status
+
+# Stage and commit
+git add .
+git commit -m "fix: beschrijf wat je deed"
+
+# Push to GitHub
+git push</div>
+      </div>
+
+      <div class="info-box">
+        <h3>🛡️ Recommended .gitignore</h3>
+        <p>Already created in your workspace. Excludes <code>node_modules/</code>, logs, and secrets.</p>
+        <div class="code-block">node_modules/
+*.log
+.env
+.env.local
+dist/
+data/*.json   ← keep if you want to track data in git
+              ← or exclude to keep data local only</div>
+      </div>
+
+      <div class="info-box">
+        <h3>⚡ GitHub Actions — auto-test on push</h3>
+        <p>Create <code>.github/workflows/ci.yml</code> to run tests automatically on every push.</p>
+        <div class="code-block">name: CI
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+      - run: npm test</div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ── Toast container ─────────────────────────────────────────── -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- ══════════════════════════════════════════
+     MODAL: Add/Edit Project
+══════════════════════════════════════════ -->
+<div class="modal-overlay" id="project-modal">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="project-modal-icon">📦</span>
+      <span id="project-modal-title">New Project</span>
+    </div>
+    <div class="form-grid">
+      <div class="form-row">
+        <div class="form-field">
+          <label>Icon (emoji)</label>
+          <input id="pf-icon" type="text" placeholder="📦" maxlength="4" />
+        </div>
+        <div class="form-field">
+          <label>Status</label>
+          <select id="pf-status">
+            <option value="active">✅ Active</option>
+            <option value="paused">⏸ Paused</option>
+            <option value="inactive">❌ Inactive</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-field">
+        <label>Project Name *</label>
+        <input id="pf-name" type="text" placeholder="My Awesome Project" />
+      </div>
+      <div class="form-field">
+        <label>Description</label>
+        <textarea id="pf-desc" placeholder="What does this project do?"></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-field">
+          <label>URL</label>
+          <input id="pf-url" type="text" placeholder="http://localhost:3000" />
+        </div>
+        <div class="form-field">
+          <label>Port</label>
+          <input id="pf-port" type="number" placeholder="3000" />
+        </div>
+      </div>
+      <div class="form-field">
+        <label>Tags (comma separated)</label>
+        <input id="pf-tags" type="text" placeholder="tools, api, frontend" />
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-secondary" onclick="closeProjectModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveProject()">Save Project</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MODAL: Add Workflow
+══════════════════════════════════════════ -->
+<div class="modal-overlay" id="workflow-modal">
+  <div class="modal">
+    <div class="modal-title">⚡ New Workflow</div>
+    <div class="form-grid">
+      <div class="form-field">
+        <label>Workflow Name *</label>
+        <input id="wf-name" type="text" placeholder="Deploy to production" />
+      </div>
+      <div class="form-field">
+        <label>Project *</label>
+        <select id="wf-project"></select>
+      </div>
+      <div class="form-field">
+        <label>Trigger</label>
+        <select id="wf-trigger">
+          <option value="manual">🖱 Manual</option>
+          <option value="schedule">⏰ Schedule</option>
+          <option value="git-push">📤 Git Push</option>
+          <option value="webhook">🔗 Webhook</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Steps (one per line)</label>
+        <textarea id="wf-steps" placeholder="npm install&#10;npm run build&#10;npm test"></textarea>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-secondary" onclick="closeWorkflowModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveWorkflow()">Save Workflow</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SCRIPT
+══════════════════════════════════════════ -->
+<script>
+const API = `${window.location.origin}/api`;
+
+let state = {
+  projects: [],
+  workflows: [],
+  editingProjectId: null,
+};
+
+// ── Navigation ────────────────────────────────────────────────────
+function nav(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(`page-${page}`).classList.add('active');
+  document.querySelector(`[data-page="${page}"]`).classList.add('active');
+}
+
+// ── Toast ─────────────────────────────────────────────────────────
+function toast(msg, type = 'success') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span>${type === 'success' ? '✅' : '❌'}</span> ${msg}`;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+// ── Load all data ─────────────────────────────────────────────────
+async function loadAll() {
+  try {
+    const [status, projects, workflows] = await Promise.all([
+      fetch(`${API}/status`).then(r => r.json()),
+      fetch(`${API}/projects`).then(r => r.json()),
+      fetch(`${API}/workflows`).then(r => r.json()),
+    ]);
+
+    // Status indicator
+    document.getElementById('status-dot').style.background = '#00d4aa';
+    document.getElementById('status-text').textContent = `Online · ${status.modules?.length || 0} modules`;
+
+    state.projects  = projects;
+    state.workflows = workflows;
+
+    renderDashboard();
+    renderProjectTable();
+    renderWorkflows();
+    updateNavBadges();
+  } catch (e) {
+    document.getElementById('status-dot').style.background = '#ff5572';
+    document.getElementById('status-text').textContent = 'Offline';
+  }
+}
+
+function updateNavBadges() {
+  document.getElementById('nav-count-projects').textContent  = state.projects.length;
+  document.getElementById('nav-count-workflows').textContent = state.workflows.length;
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────
+function renderDashboard() {
+  const active   = state.projects.filter(p => p.status === 'active').length;
+  const paused   = state.projects.filter(p => p.status === 'paused').length;
+  const inactive = state.projects.filter(p => p.status === 'inactive').length;
+
+  document.getElementById('metrics-row').innerHTML = [
+    { icon: '📦', num: state.projects.length,  lbl: 'Total Projects',    cls: '' },
+    { icon: '✅', num: active,                  lbl: 'Active',            cls: 'green' },
+    { icon: '⚡', num: state.workflows.length,  lbl: 'Workflows',         cls: '' },
+    { icon: '⏸', num: paused + inactive,        lbl: 'Paused / Inactive', cls: 'yellow' },
+  ].map(m => `
+    <div class="metric-card ${m.cls}">
+      <div class="metric-icon">${m.icon}</div>
+      <div class="metric-num">${m.num}</div>
+      <div class="metric-lbl">${m.lbl}</div>
+    </div>
+  `).join('');
+
+  if (!state.projects.length) {
+    document.getElementById('dashboard-projects').innerHTML = `
+      <div class="empty-state" style="grid-column:1/-1">
+        <div class="empty-icon">📦</div>
+        <p>No projects yet. Add your first project!</p>
+        <button class="btn btn-primary" onclick="nav('projects')">Go to Projects</button>
+      </div>`;
+    return;
+  }
+
+  document.getElementById('dashboard-projects').innerHTML = state.projects.map(p => `
+    <div class="project-card" onclick="nav('projects')">
+      <div class="project-card-header">
+        <span class="project-icon">${p.icon || '📦'}</span>
+        <div>
+          <div class="project-name">${p.name}</div>
+          <div class="project-desc">${p.description || '—'}</div>
+        </div>
+      </div>
+      <div class="project-card-footer">
+        <span class="status-pill status-${p.status}">${p.status}</span>
+        ${(p.tags||[]).map(t => `<span class="tag-chip">${t}</span>`).join('')}
+        ${p.url ? `<a class="project-link" href="${p.url}" target="_blank">Open ↗</a>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── Projects table ────────────────────────────────────────────────
+function renderProjectTable() {
+  const q = (document.getElementById('proj-search').value || '').toLowerCase();
+  const filtered = q
+    ? state.projects.filter(p =>
+        p.name.toLowerCase().includes(q) ||
+        (p.description||'').toLowerCase().includes(q) ||
+        (p.tags||[]).some(t => t.toLowerCase().includes(q))
+      )
+    : state.projects;
+
+  if (!filtered.length) {
+    document.getElementById('projects-tbody').innerHTML = `
+      <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:40px">
+        ${state.projects.length ? 'No results found' : 'No projects yet — click "+ New Project"'}
+      </td></tr>`;
+    return;
+  }
+
+  document.getElementById('projects-tbody').innerHTML = filtered.map(p => `
+    <tr>
+      <td style="font-size:1.4rem">${p.icon || '📦'}</td>
+      <td><strong>${p.name}</strong></td>
+      <td style="color:var(--muted);max-width:240px">${p.description || '—'}</td>
+      <td><span class="status-pill status-${p.status}">${p.status}</span></td>
+      <td>${(p.tags||[]).map(t => `<span class="tag-chip">${t}</span>`).join(' ') || '—'}</td>
+      <td style="color:var(--muted)">${p.port ? `:${p.port}` : '—'}</td>
+      <td>
+        <div class="td-actions">
+          ${p.url ? `<a href="${p.url}" target="_blank" class="btn btn-secondary btn-sm">Open ↗</a>` : ''}
+          <button class="btn btn-secondary btn-sm" onclick="openProjectModal('${p.id}')">✏️</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteProject('${p.id}')">🗑</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+// ── Workflows ─────────────────────────────────────────────────────
+function renderWorkflows() {
+  const el = document.getElementById('workflow-container');
+  if (!state.workflows.length) {
+    el.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">⚡</div>
+        <p>No workflows yet. Create your first automation!</p>
+        <button class="btn btn-primary" onclick="openWorkflowModal()">+ New Workflow</button>
+      </div>`;
+    return;
+  }
+  el.innerHTML = `<div class="workflow-list">${state.workflows.map(w => {
+    const project = state.projects.find(p => p.id === w.projectId);
+    return `
+      <div class="workflow-card">
+        <span class="workflow-icon">⚡</span>
+        <div class="workflow-info">
+          <div class="workflow-name">${w.name}</div>
+          <div class="workflow-meta">
+            ${project ? `${project.icon} ${project.name}` : w.projectId} ·
+            Trigger: <strong>${w.trigger}</strong> ·
+            ${w.steps?.length || 0} step(s)
+          </div>
+        </div>
+        <div class="workflow-actions">
+          <span class="status-pill status-${w.enabled ? 'active' : 'paused'}">${w.enabled ? 'enabled' : 'disabled'}</span>
+          <button class="btn btn-danger btn-sm" onclick="deleteWorkflow('${w.id}')">🗑</button>
+        </div>
+      </div>`;
+  }).join('')}</div>`;
+}
+
+// ── Project CRUD ──────────────────────────────────────────────────
+function openProjectModal(id = null) {
+  state.editingProjectId = id;
+  const p = id ? state.projects.find(x => x.id === id) : null;
+  document.getElementById('project-modal-title').textContent = id ? 'Edit Project' : 'New Project';
+  document.getElementById('project-modal-icon').textContent  = p?.icon || '📦';
+  document.getElementById('pf-icon').value   = p?.icon || '';
+  document.getElementById('pf-name').value   = p?.name || '';
+  document.getElementById('pf-desc').value   = p?.description || '';
+  document.getElementById('pf-url').value    = p?.url || '';
+  document.getElementById('pf-port').value   = p?.port || '';
+  document.getElementById('pf-tags').value   = (p?.tags||[]).join(', ');
+  document.getElementById('pf-status').value = p?.status || 'active';
+  document.getElementById('project-modal').classList.add('open');
+}
+
+function closeProjectModal() {
+  document.getElementById('project-modal').classList.remove('open');
+  state.editingProjectId = null;
+}
+
+async function saveProject() {
+  const name = document.getElementById('pf-name').value.trim();
+  if (!name) { toast('Project name is required', 'error'); return; }
+
+  const body = {
+    icon:        document.getElementById('pf-icon').value.trim() || '📦',
+    name,
+    description: document.getElementById('pf-desc').value.trim(),
+    url:         document.getElementById('pf-url').value.trim() || null,
+    port:        parseInt(document.getElementById('pf-port').value) || null,
+    tags:        document.getElementById('pf-tags').value.split(',').map(t=>t.trim()).filter(Boolean),
+    status:      document.getElementById('pf-status').value,
+  };
+
+  try {
+    if (state.editingProjectId) {
+      await fetch(`${API}/projects/${state.editingProjectId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      toast('Project updated!');
+    } else {
+      await fetch(`${API}/projects`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      toast('Project created!');
+    }
+    closeProjectModal();
+    await loadAll();
+  } catch (e) {
+    toast('Failed to save project', 'error');
+  }
+}
+
+async function deleteProject(id) {
+  const p = state.projects.find(x => x.id === id);
+  if (!confirm(`Delete "${p?.name}"? This cannot be undone.`)) return;
+  await fetch(`${API}/projects/${id}`, { method: 'DELETE' });
+  toast(`Deleted: ${p?.name}`);
+  await loadAll();
+}
+
+// ── Workflow CRUD ─────────────────────────────────────────────────
+function openWorkflowModal() {
+  const sel = document.getElementById('wf-project');
+  sel.innerHTML = state.projects.map(p => `<option value="${p.id}">${p.icon} ${p.name}</option>`).join('');
+  document.getElementById('wf-name').value    = '';
+  document.getElementById('wf-trigger').value = 'manual';
+  document.getElementById('wf-steps').value   = '';
+  document.getElementById('workflow-modal').classList.add('open');
+}
+
+function closeWorkflowModal() {
+  document.getElementById('workflow-modal').classList.remove('open');
+}
+
+async function saveWorkflow() {
+  const name = document.getElementById('wf-name').value.trim();
+  if (!name) { toast('Workflow name is required', 'error'); return; }
+
+  const body = {
+    name,
+    projectId: document.getElementById('wf-project').value,
+    trigger:   document.getElementById('wf-trigger').value,
+    steps:     document.getElementById('wf-steps').value.split('\n').map(s=>s.trim()).filter(Boolean),
+  };
+
+  await fetch(`${API}/workflows`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  toast('Workflow created!');
+  closeWorkflowModal();
+  await loadAll();
+}
+
+async function deleteWorkflow(id) {
+  if (!confirm('Delete this workflow?')) return;
+  await fetch(`${API}/workflows/${id}`, { method: 'DELETE' });
+  toast('Workflow deleted');
+  await loadAll();
+}
+
+// ── Icon preview ──────────────────────────────────────────────────
+document.getElementById('pf-icon').addEventListener('input', e => {
+  document.getElementById('project-modal-icon').textContent = e.target.value || '📦';
+});
+
+// ── Close modals on backdrop click ────────────────────────────────
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+});
+
+// ── Agents ────────────────────────────────────────────────────────
+async function loadAgents() {
+  const grid = document.getElementById('agents-grid');
+  if (!grid) return;
+  grid.innerHTML = '<div style="color:var(--muted);font-size:.85rem;padding:10px">Laden...</div>';
+  try {
+    const data = await fetch(`${API}/openclaw/agents`).then(r => r.json());
+    if (!data.agents?.length) {
+      grid.innerHTML = '<div style="color:var(--muted);font-size:.85rem">Geen agents gevonden.</div>';
+      return;
+    }
+    grid.innerHTML = data.agents.map(a => `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;position:relative;overflow:hidden">
+        <div style="position:absolute;top:0;left:0;right:0;height:3px;background:var(--accent)"></div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+          <div style="font-size:2rem;background:var(--surface2);border-radius:10px;width:48px;height:48px;display:flex;align-items:center;justify-content:center">${a.emoji}</div>
+          <div>
+            <div style="font-size:1rem;font-weight:700">${a.name}</div>
+            <div style="font-size:.75rem;color:var(--muted)">id: ${a.id}</div>
+          </div>
+          <div style="margin-left:auto">
+            <span style="background:rgba(0,212,170,.15);color:var(--accent2);border-radius:20px;font-size:.7rem;padding:2px 9px;font-weight:600">✅ Actief</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:7px">
+          <div style="display:flex;gap:8px;align-items:center;font-size:.82rem">
+            <span style="color:var(--muted);width:80px;flex-shrink:0">Model</span>
+            <span style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:2px 9px;font-size:.75rem;font-family:monospace">${a.model}</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;font-size:.82rem">
+            <span style="color:var(--muted);width:80px;flex-shrink:0">Tools</span>
+            <span style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:2px 9px;font-size:.75rem">${a.tools}</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:flex-start;font-size:.82rem">
+            <span style="color:var(--muted);width:80px;flex-shrink:0">Workspace</span>
+            <span style="font-size:.72rem;color:var(--muted);font-family:monospace;word-break:break-all">${a.workspace.replace(/\\/g,'/')}</span>
+          </div>
+        </div>
+      </div>`).join('');
+  } catch(e) {
+    grid.innerHTML = `<div style="color:var(--danger);font-size:.85rem">Fout: ${e.message}</div>`;
+  }
+}
+
+// Laad agents wanneer pagina actief wordt
+const _origNav = nav;
+nav = function(page) {
+  _origNav(page);
+  if (page === 'agents') loadAgents();
+};
+
+// ── Boot ──────────────────────────────────────────────────────────
+loadAll();
+</script>
+</body>
+</html>

@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "projects": [
+    {
+      "id": "activity-dashboard",
+      "name": "Activity Dashboard",
+      "description": "Tracks all Mike activity — what was asked, what was done",
+      "icon": "📊",
+      "status": "active",
+      "url": "http://localhost:3001",
+      "port": 3001,
+      "tags": ["monitoring", "logging"],
+      "createdAt": "2026-03-01T00:00:00.000Z",
+      "meta": {}
+    },
+    {
+      "id": "garageos",
+      "name": "GarageOS",
+      "description": "Interface voor het beheren van een garage systeem",
+      "icon": "🚗",
+      "status": "active",
+      "url": "http://localhost:3002",
+      "port": 3002,
+      "tags": ["frontend", "garage", "dashboard"],
+      "createdAt": "2026-03-25T00:00:00.000Z",
+      "meta": {
+        "path": "C:/Users/jurge/.openclaw/workspace/garageos",
+        "stack": "HTML/CSS/JS"
+      }
+    },
+    {
+      "id": "youtube-transcript",
+      "name": "YouTube Transcript Tool",
+      "description": "Extract and download YouTube video transcripts with timestamps",
+      "icon": "🎬",
+      "status": "active",
+      "url": "http://localhost:3003",
+      "port": 3003,
+      "tags": ["tools", "youtube", "transcripts"],
+      "createdAt": "2026-03-01T00:00:00.000Z",
+      "meta": {}
+    }
+    ,{
+      "id": "autonomous-employee",
+      "name": "Autonome Medewerker",
+      "description": "Voert elke nacht om 02:00 automatisch één taak uit die ons dichter bij onze doelen brengt",
+      "icon": "🤖",
+      "status": "active",
+      "url": "http://localhost:3007",
+      "port": 3007,
+      "tags": ["ai", "autonomous", "nightly", "strategy"],
+      "createdAt": "2026-03-25T00:00:00.000Z",
+      "meta": {}
+    }
+    ,{
+      "id": "rd-team",
+      "name": "R&D Team",
+      "description": "5 AI agents (Nova, Rex, Sage, Vex, Atlas) debate your projects and produce strategic memos 24/7",
+      "icon": "🧪",
+      "status": "active",
+      "url": "http://localhost:3006",
+      "port": 3006,
+      "tags": ["ai", "strategy", "research", "agents"],
+      "createdAt": "2026-03-25T00:00:00.000Z",
+      "meta": {}
+    }
+    ,{
+      "id": "trend-tracker",
+      "name": "Trend Tracker",
+      "description": "Track trending Reddit & YouTube content around Claude Code, OpenClaw, AI tools and Anthropic",
+      "icon": "📈",
+      "status": "active",
+      "url": "http://localhost:3005",
+      "port": 3005,
+      "tags": ["trending", "reddit", "youtube", "ai"],
+      "createdAt": "2026-03-25T00:00:00.000Z",
+      "meta": {}
+    }
+    ,{
+      "id": "daily-memory",
+      "name": "Daily Memory",
+      "description": "Daily logs of all conversations and work sessions — searchable by day, project and keyword",
+      "icon": "🧠",
+      "status": "active",
+      "url": "http://localhost:3004",
+      "port": 3004,
+      "tags": ["memory", "logs", "tracking"],
+      "createdAt": "2026-03-25T00:00:00.000Z",
+      "meta": {
+        "path": "C:/Users/jurge/Projects/mike-control-center/apps/daily-memory",
+        "stack": "Node.js / Express"
+      }
+    }
+  ]
+}
