@@ -927,9 +927,13 @@ jobs:
           <div id="act-project-list"></div>
         </aside>
         <div class="act-main">
-          <div class="act-stats" id="act-stats-bar"></div>
+          <div class="act-stats" id="act-stats-bar">
+            <div class="act-stat-card"><div class="num" id="act-stat-total">–</div><div class="lbl">Totaal</div></div>
+            <div class="act-stat-card"><div class="num" id="act-stat-today">–</div><div class="lbl">Vandaag</div></div>
+            <div class="act-stat-card"><div class="num" id="act-stat-projects">–</div><div class="lbl">Projecten</div></div>
+          </div>
           <div class="act-search-row">
-            <input class="act-search-input" id="act-search" type="text" placeholder="Zoek in verzoeken, acties, bestanden…" oninput="actRenderEntries()" />
+            <input class="act-search-input" id="act-search-input" type="text" placeholder="Zoek in verzoeken, acties, bestanden…" oninput="actRender()" />
           </div>
           <div class="act-entries" id="act-entries-list"></div>
         </div>
@@ -1001,7 +1005,7 @@ jobs:
           </div>
           <div class="mem-day-list" id="mem-day-list"></div>
         </div>
-        <div class="mem-main" id="mem-main-area">
+        <div class="mem-main" id="mem-main-content">
           <div class="mem-empty"><div style="font-size:3rem">🧠</div><p>Selecteer een dag of zoek door alle logs.</p><button class="btn btn-primary" onclick="memOpenAddModal()">+ Log eerste entry</button></div>
         </div>
       </div>
@@ -1094,7 +1098,7 @@ jobs:
         <div><h2>📈 Trend Tracker</h2><p>Reddit & YouTube trending content voor AI-onderwerpen</p></div>
         <div style="display:flex;gap:8px;align-items:center">
           <span id="tr-unseen-badge" class="tr-unseen-badge"></span>
-          <button class="btn btn-primary" id="tr-poll-btn" onclick="trTriggerPoll()">🔄 Poll Now</button>
+          <button class="btn btn-primary" id="trend-poll-btn" onclick="trendPollNow()">🔄 Poll Now</button>
         </div>
       </div>
       <div class="tr-sub-nav">
@@ -1108,11 +1112,13 @@ jobs:
           <div class="tr-status-item"><div class="tr-sdot dot-grey" id="tr-reddit-dot"></div><span id="tr-reddit-status">Reddit</span></div>
           <div class="tr-status-item"><div class="tr-sdot dot-grey" id="tr-yt-dot"></div><span id="tr-yt-status">YouTube</span></div>
           <div class="tr-status-item"><div class="tr-sdot dot-grey" id="tr-poll-dot"></div><span id="tr-poll-status-text">Idle</span></div>
-          <span style="margin-left:auto;font-size:.75rem;color:var(--muted)" id="tr-last-updated"></span>
+          <span id="trend-status" style="margin-left:auto;font-size:.75rem;color:var(--muted)"></span>
         </div>
         <div class="tr-metrics" id="tr-metrics-row"></div>
-        <div class="tr-topic-tabs" id="tr-topic-tabs"></div>
-        <div id="tr-feed-content"><div class="tr-empty"><div class="tr-spinner"></div><br>Laden…</div></div>
+        <div class="tr-topic-tabs" id="trend-topic-tabs"></div>
+        <div id="tr-feed-content">
+          <div id="trend-results-container" class="trend-results-grid"></div>
+        </div>
       </div>
       <!-- Alerts page -->
       <div class="tr-page" id="tr-page-alerts">
@@ -1226,7 +1232,7 @@ jobs:
       <div class="page-header">
         <div><h2>🔬 R&amp;D Team</h2><p>5 AI-agenten analyseren je projecten en schrijven een strategisch memo</p></div>
         <div style="display:flex;gap:8px;align-items:center">
-          <span class="rd-mode-pill" id="rd-mode-pill">…</span>
+          <span class="rd-mode-pill" id="rd-mode">…</span>
           <button class="btn btn-primary" onclick="rdShowStart()">+ Nieuwe Sessie</button>
         </div>
       </div>
@@ -1236,11 +1242,22 @@ jobs:
             <h3>Sessies</h3>
             <button class="btn btn-secondary btn-sm" onclick="rdLoadSessions()">↻</button>
           </div>
-          <div class="rd-session-list" id="rd-session-list">
+          <div class="rd-session-list" id="rd-sessions-list">
             <div class="rd-empty">Nog geen sessies.</div>
           </div>
         </aside>
-        <div class="rd-main" id="rd-main"></div>
+        <div class="rd-main" id="rd-main">
+          <div id="rd-session-detail" style="display:none;padding:20px 24px;flex:1"></div>
+          <div id="rd-start-view" style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:32px 20px;text-align:center">
+            <div style="font-size:3rem;margin-bottom:12px">🔬</div>
+            <p style="color:var(--muted);margin-bottom:20px">Selecteer een sessie of start een nieuw debat.</p>
+            <div style="width:100%;max-width:480px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;text-align:left">
+              <label style="display:block;font-size:.72rem;color:var(--muted);margin-bottom:6px;font-weight:600;text-transform:uppercase">Debat onderwerp</label>
+              <input type="text" id="rd-new-focus" placeholder="Bijv. Beste stack voor een SaaS MVP in 2025" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:9px 11px;color:var(--text);font-size:.85rem;outline:none;margin-bottom:12px" />
+              <button id="rd-start-btn" class="btn btn-primary" onclick="rdStartDebate()">🚀 Start debat</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1358,6 +1375,11 @@ function nav(page) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById(`page-${page}`).classList.add('active');
   document.querySelector(`[data-page="${page}"]`).classList.add('active');
+  // Laad data voor tool pagina's
+  if (page === 'activity') actLoad();
+  if (page === 'memory')   memLoad();
+  if (page === 'trends')   trendLoad();
+  if (page === 'rdteam')   rdLoad();
 }
 
 // ── Toast ─────────────────────────────────────────────────────────
@@ -1946,6 +1968,283 @@ nav = function(page) {
 
 // ── Boot ──────────────────────────────────────────────────────────
 loadAll();
+
+// ── Activity Dashboard ────────────────────────────────────────────────────────
+let actAllEntries = [];
+let actCurrentProject = 'all';
+
+async function actLoad() {
+  try {
+    const data = await fetch(`${API}/activity`).then(r => r.json());
+    actAllEntries = data.entries || [];
+    const el = id => document.getElementById(id);
+    if (el('act-stat-total')) el('act-stat-total').textContent = data.total || 0;
+    const today = new Date().toISOString().slice(0,10);
+    if (el('act-stat-today')) el('act-stat-today').textContent = actAllEntries.filter(e => e.timestamp?.startsWith(today)).length;
+    if (el('act-stat-projects')) el('act-stat-projects').textContent = (data.projects||[]).length;
+    const sidebar = el('act-project-list');
+    if (sidebar) {
+      sidebar.innerHTML = `<div class="act-proj-item ${actCurrentProject==='all'?'active':''}" onclick="actFilter('all')">Alle projecten <span>${data.total}</span></div>`;
+      (data.projects||[]).forEach(p => {
+        sidebar.innerHTML += `<div class="act-proj-item ${actCurrentProject===p?'active':''}" onclick="actFilter('${p}')">${p} <span>${data.projectCounts?.[p]||0}</span></div>`;
+      });
+    }
+    actRender();
+  } catch(e) { console.error('Activity load error:', e); }
+}
+
+function actFilter(project) {
+  actCurrentProject = project;
+  document.querySelectorAll('.act-proj-item').forEach(el => el.classList.remove('active'));
+  event?.target?.classList.add('active');
+  actRender();
+}
+
+function actRender() {
+  const search = document.getElementById('act-search-input')?.value?.toLowerCase() || '';
+  let entries = actAllEntries;
+  if (actCurrentProject !== 'all') entries = entries.filter(e => e.project === actCurrentProject);
+  if (search) entries = entries.filter(e =>
+    (e.request||'').toLowerCase().includes(search) ||
+    (e.summary||'').toLowerCase().includes(search) ||
+    (e.project||'').toLowerCase().includes(search)
+  );
+  const typeColors = { feature:'#7c6fff', fix:'#00d4aa', config:'#f59e0b', refactor:'#ff9f43', info:'#74b9ff', other:'#a29bfe' };
+  const container = document.getElementById('act-entries-list');
+  if (!container) return;
+  if (!entries.length) {
+    container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">Geen activiteiten gevonden</div>';
+    return;
+  }
+  container.innerHTML = entries.map(e => `
+    <div class="act-entry-card">
+      <div class="act-entry-header" onclick="this.nextElementSibling.classList.toggle('open')">
+        <div class="act-type-dot" style="background:${typeColors[e.type]||'#a29bfe'}"></div>
+        <div class="act-entry-meta">
+          <div class="act-request">${e.request||'Onbekend'}</div>
+          <div class="act-summary">${e.summary||''}</div>
+        </div>
+        <div class="act-entry-right">
+          <span class="act-type-badge" style="background:${typeColors[e.type]||'#a29bfe'}22;color:${typeColors[e.type]||'#a29bfe'}">${e.type||'other'}</span>
+          <span class="act-ts">${new Date(e.timestamp).toLocaleString('nl-BE',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</span>
+          ${e.project?`<span class="act-proj-tag">${e.project}</span>`:''}
+        </div>
+      </div>
+      <div class="act-detail">
+        ${(e.actions||[]).length?`<h4>Acties</h4><ul>${e.actions.map(a=>`<li>${a}</li>`).join('')}</ul>`:''}
+        ${(e.files_changed||[]).length?`<h4 style="margin-top:10px">Bestanden</h4><div>${e.files_changed.map(f=>`<span class="act-file-chip">${f}</span>`).join('')}</div>`:''}
+      </div>
+    </div>`).join('');
+}
+
+// ── Daily Memory ──────────────────────────────────────────────────────────────
+let memDays = [];
+let memCurrentDate = null;
+
+async function memLoad() {
+  try {
+    const days = await fetch(`${API}/memory/days`).then(r => r.json());
+    memDays = days;
+    const list = document.getElementById('mem-day-list');
+    if (!list) return;
+    if (!days.length) {
+      list.innerHTML = '<div style="padding:12px;color:var(--muted);font-size:.8rem">Geen logs gevonden</div>';
+      return;
+    }
+    list.innerHTML = days.map(d => `
+      <div class="mem-day-item ${memCurrentDate===d.date?'active':''}" onclick="memSelectDay('${d.date}')">
+        <div class="mem-day-date">${d.date} <span class="mem-day-count">${d.count}</span></div>
+        <div class="mem-day-projects">${(d.projects||[]).join(', ')||'—'}</div>
+      </div>`).join('');
+    if (!memCurrentDate && days.length) memSelectDay(days[0].date);
+  } catch(e) { console.error('Memory load error:', e); }
+}
+
+async function memSelectDay(date) {
+  memCurrentDate = date;
+  document.querySelectorAll('.mem-day-item').forEach(el => {
+    el.classList.toggle('active', el.querySelector('.mem-day-date')?.textContent?.startsWith(date));
+  });
+  try {
+    const day = await fetch(`${API}/memory/days/${date}`).then(r => r.json());
+    const main = document.getElementById('mem-main-content');
+    if (!main) return;
+    if (!day.entries?.length) {
+      main.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted)">Geen entries voor deze dag</div>';
+      return;
+    }
+    main.innerHTML = day.entries.map(e => `
+      <div class="mem-entry-card">
+        <div class="mem-entry-header">
+          <div class="mem-entry-title">${e.title}</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
+            ${e.project?`<span style="font-size:.7rem;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:2px 8px;color:var(--muted)">${e.project}</span>`:''}
+            <span style="font-size:.7rem;color:var(--muted)">${new Date(e.timestamp).toLocaleTimeString('nl-BE',{hour:'2-digit',minute:'2-digit'})}</span>
+          </div>
+        </div>
+        <div class="mem-entry-body">
+          <div class="mem-entry-summary">${e.summary}</div>
+          ${(e.tags||[]).length?`<div style="margin-top:8px">${e.tags.map(t=>`<span style="font-size:.68rem;background:var(--accent)22;color:var(--accent);border-radius:10px;padding:2px 8px;margin-right:4px">#${t}</span>`).join('')}</div>`:''}
+          ${(e.details||[]).length?`<ul class="mem-detail-list">${e.details.map(d=>`<li>${d}</li>`).join('')}</ul>`:''}
+        </div>
+      </div>`).join('');
+  } catch(e) { console.error('Memory day load error:', e); }
+}
+
+async function memSearch(q) {
+  if (!q) return memLoad();
+  try {
+    const data = await fetch(`${API}/memory/search?q=${encodeURIComponent(q)}`).then(r => r.json());
+    const main = document.getElementById('mem-main-content');
+    if (!main) return;
+    main.innerHTML = `<div style="color:var(--muted);font-size:.8rem;margin-bottom:16px">${data.count} resultaten voor "${q}"</div>` +
+      (data.results||[]).map(e => `
+        <div class="mem-entry-card">
+          <div class="mem-entry-header">
+            <div class="mem-entry-title">${e.title}</div>
+            <span style="font-size:.7rem;color:var(--muted)">${e.date}</span>
+          </div>
+          <div class="mem-entry-body"><div class="mem-entry-summary">${e.summary}</div></div>
+        </div>`).join('') || '<div style="padding:40px;text-align:center;color:var(--muted)">Geen resultaten</div>';
+  } catch(e) { console.error('Memory search error:', e); }
+}
+
+// ── Trend Tracker ─────────────────────────────────────────────────────────────
+let trendCurrentTopic = null;
+
+async function trendLoad() {
+  try {
+    const [status, results, topics] = await Promise.all([
+      fetch(`${API}/trends/status`).then(r => r.json()).catch(() => ({})),
+      fetch(`${API}/trends/results`).then(r => r.json()).catch(() => ({topics:{}})),
+      fetch(`${API}/trends/topics`).then(r => r.json()).catch(() => [])
+    ]);
+    const statusEl = document.getElementById('trend-status');
+    if (statusEl) statusEl.textContent = status.lastPoll ? `Laatste poll: ${new Date(status.lastPoll).toLocaleString('nl-BE')}` : 'Nog niet gepolled';
+    const unseenEl = document.getElementById('trend-unseen-count');
+    if (unseenEl && status.unseenAlerts) unseenEl.textContent = status.unseenAlerts;
+    const tabsEl = document.getElementById('trend-topic-tabs');
+    if (tabsEl && topics.length) {
+      tabsEl.innerHTML = topics.map(t =>
+        `<button class="trend-topic-btn ${trendCurrentTopic===t.id?'active':''}" onclick="trendSelectTopic('${t.id}')" data-tid="${t.id}">${t.label}</button>`
+      ).join('');
+      if (!trendCurrentTopic) trendSelectTopic(topics[0].id);
+    }
+    window._trendResults = results;
+    if (trendCurrentTopic) trendRenderTopic(trendCurrentTopic);
+  } catch(e) { console.error('Trend load error:', e); }
+}
+
+function trendSelectTopic(id) {
+  trendCurrentTopic = id;
+  document.querySelectorAll('.trend-topic-btn').forEach(b => b.classList.toggle('active', b.dataset.tid === id));
+  trendRenderTopic(id);
+}
+
+function trendRenderTopic(id) {
+  const results = window._trendResults?.topics?.[id] || { reddit:[], youtube:[] };
+  const container = document.getElementById('trend-results-container');
+  if (!container) return;
+  const redditHtml = results.reddit?.length ? results.reddit.slice(0,10).map(p => `
+    <div class="trend-item">
+      <a href="${p.url}" target="_blank" class="trend-item-title">${p.title}</a>
+      <div class="trend-item-meta"><span>r/${p.subreddit||'?'}</span><span>⬆ ${p.upvotes||0}</span><span>💬 ${p.comments||0}</span></div>
+    </div>`).join('') : '<div style="color:var(--muted);font-size:.83rem;padding:12px">Geen Reddit posts</div>';
+  const ytHtml = results.youtube?.length ? results.youtube.slice(0,8).map(v => `
+    <div class="trend-item">
+      <a href="${v.url}" target="_blank" class="trend-item-title">${v.title}</a>
+      <div class="trend-item-meta"><span>${v.channel||'?'}</span><span>👁 ${(v.views||0).toLocaleString()}</span><span>👍 ${v.likes||0}</span></div>
+    </div>`).join('') : '<div style="color:var(--muted);font-size:.83rem;padding:12px">Geen YouTube videos</div>';
+  container.innerHTML = `
+    <div class="trend-col"><div class="trend-col-header">🔴 Reddit</div>${redditHtml}</div>
+    <div class="trend-col"><div class="trend-col-header">▶️ YouTube</div>${ytHtml}</div>`;
+}
+
+async function trendPollNow() {
+  const btn = document.getElementById('trend-poll-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Polling...'; }
+  try {
+    await fetch(`${API}/trends/poll`, { method:'POST' });
+    setTimeout(() => trendLoad(), 2000);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🔄 Poll nu'; }
+  }
+}
+
+// ── R&D Team ──────────────────────────────────────────────────────────────────
+async function rdLoad() {
+  try {
+    const [status, sessions] = await Promise.all([
+      fetch(`${API}/rdteam/status`).then(r => r.json()).catch(() => ({})),
+      fetch(`${API}/rdteam/sessions`).then(r => r.json()).catch(() => [])
+    ]);
+    const modeEl = document.getElementById('rd-mode');
+    if (modeEl) modeEl.textContent = status.mode === 'live' ? '🟢 Live' : '🟡 Mock';
+    const list = document.getElementById('rd-sessions-list');
+    if (!list) return;
+    if (!sessions.length) {
+      list.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted)">Geen sessies gevonden. Start een nieuw debat!</div>';
+      return;
+    }
+    list.innerHTML = sessions.map(s => `
+      <div class="rd-session-card" onclick="rdOpenSession('${s.id}')">
+        <div class="rd-session-header">
+          <div class="rd-session-focus">${s.focus}</div>
+          <span class="rd-session-status rd-status-${s.status}">${s.status}</span>
+        </div>
+        <div class="rd-session-meta">
+          <span>${new Date(s.createdAt).toLocaleString('nl-BE',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</span>
+          ${s.completedAt?'<span>✅ Voltooid</span>':''}
+        </div>
+      </div>`).join('');
+  } catch(e) { console.error('RD load error:', e); }
+}
+
+async function rdOpenSession(id) {
+  try {
+    const s = await fetch(`${API}/rdteam/sessions/${id}`).then(r => r.json());
+    const detail = document.getElementById('rd-session-detail');
+    if (!detail) return;
+    detail.style.display = 'block';
+    document.getElementById('rd-sessions-list').style.display = 'none';
+    detail.innerHTML = `
+      <button onclick="rdBackToList()" style="margin-bottom:16px;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:6px 14px;border-radius:8px;cursor:pointer">← Terug</button>
+      <h3 style="margin-bottom:8px">${s.focus}</h3>
+      <div style="color:var(--muted);font-size:.8rem;margin-bottom:20px">${new Date(s.createdAt).toLocaleString('nl-BE')} · Status: ${s.status}</div>
+      ${s.memo?`<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:20px;line-height:1.6;white-space:pre-wrap">${s.memo}</div>`:''}
+      <div style="font-size:.8rem;color:var(--muted)">${(s.steps||[]).length} stappen uitgevoerd</div>`;
+  } catch(e) { console.error('RD session error:', e); }
+}
+
+function rdBackToList() {
+  document.getElementById('rd-session-detail').style.display = 'none';
+  document.getElementById('rd-sessions-list').style.display = 'block';
+}
+
+async function rdStartDebate() {
+  const focus = document.getElementById('rd-new-focus')?.value?.trim();
+  if (!focus) return;
+  const btn = document.getElementById('rd-start-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Starten...'; }
+  try {
+    const r = await fetch(`${API}/rdteam/sessions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ focus })
+    });
+    const s = await r.json();
+    if (s.id) {
+      document.getElementById('rd-new-focus').value = '';
+      toast('Debat gestart!');
+      setTimeout(() => rdLoad(), 1500);
+    }
+  } catch(e) {
+    toast('Fout bij starten', 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🚀 Start debat'; }
+  }
+}
+
 </script>
 </body>
 </html>
